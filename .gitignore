@@ -1,0 +1,5 @@
+config.py
+discordbot.log
+
+__pycache__/
+.vscode/
