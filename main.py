@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
-from config import TOKEN, GUILD_ID
+from config import TOKEN, GUILD_ID, INVITE
 import logging
 
 # Logging設定
@@ -36,7 +36,7 @@ async def hello(interaction: discord.Interaction):
 #bot招待リンク
 @tree.command(name='invite', description="botの招待リンク")
 async def hello(interaction: discord.Interaction):
-    await interaction.response.send_message("https://discord.com/api/oauth2/authorize?client_id=889950735867969546&permissions=8&scope=bot")
+    await interaction.response.send_message(INVITE)
 
 
 #四則演算
