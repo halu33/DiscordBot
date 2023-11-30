@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 from config import TOKEN, GUILD_ID, INVITE
-from help_commands import commands_description
+from help_commands import commands_description, detailed_commands_description
 import math
 import logging
 
@@ -34,17 +34,15 @@ async def test(interaction: discord.Interaction, str: str = None):
         message = "yo!" #引数が入力されなかった場合
     await interaction.response.send_message(message)
 
-#helpコマンドの実装
+#helpコマンド
 @tree.command(name='help', description="helpコマンド")
 @app_commands.describe(command="コマンド名（任意）")
 async def help(interaction: discord.Interaction, command: str = None):
     if command is None:
-        #全コマンドの説明を表示
         messages = [f"/{cmd}: {desc}" for cmd, desc in commands_description.items()]
         await interaction.response.send_message("\n".join(messages))
-    elif command in commands_description:
-        #特定のコマンドの詳細を表示
-        await interaction.response.send_message(f"/{command}: {commands_description[command]}")
+    elif command in detailed_commands_description:
+        await interaction.response.send_message(f"/{command}: {detailed_commands_description[command]}")
     else:
         await interaction.response.send_message(f"コマンド '{command}' は存在しません。")
 
@@ -97,16 +95,37 @@ async def div(interaction: discord.Interaction, num1: int, num2: int, num3: int 
     await interaction.response.send_message(f"{' / '.join(map(str, numbers))} = {result}")
 
 @tree.command(name='mod', description="剰余")
-@app_commands.describe(x="被除数", y="除数")
-async def mod(interaction: discord.Interaction, x: int, y: int):
-    result = x % y
-    await interaction.response.send_message(f"{x} % {y} = {result}")
+@app_commands.describe(x="被除数", y="除数", x3="除数（任意）", x4="除数（任意）", x5="除数（任意）")
+async def mod(interaction: discord.Interaction, x: int, y: int, x3: int = None, x4: int = None, x5: int = None):
+    if y == 0 or (x3 == 0 and x3 is not None) or (x4 == 0 and x4 is not None) or (x5 == 0 and x5 is not None):
+        await interaction.response.send_message("0で割ることはできません。")
+        return
+    numbers = [x, y] + [num for num in [x3, x4, x5] if num is not None]
+    # 最初の2つの数で剰余を計算し、その後の数で続けて剰余を取る
+    result = numbers[0] % numbers[1]
+    for num in numbers[2:]:
+        result %= num
+    numbers_str = " % ".join(map(str, numbers))
+    await interaction.response.send_message(f"{numbers_str} = {result}")
 
 @tree.command(name='exp', description="累乗")
-@app_commands.describe(base="基数", exponent="指数")
-async def exp(interaction: discord.Interaction, base: int, exponent: int):
-    result = base ** exponent
-    await interaction.response.send_message(f"{base} ^ {exponent} = {result}")
+@app_commands.describe(mode="基数の種類（自然対数の底、または他の実数）", exponent="指数", base="基数（他の実数の場合）")
+@app_commands.choices(mode=[
+    app_commands.Choice(name='自然対数の底 e', value='e'),
+    app_commands.Choice(name='他の実数', value='other')
+])
+async def exp(interaction: discord.Interaction, mode: str, exponent: int, base: float = None):
+    if mode == 'e':
+        result = math.exp(exponent)
+    elif mode == 'other':
+        if base is None:
+            await interaction.response.send_message("基数を入力してください。")
+            return
+        result = base ** exponent
+    else:
+        await interaction.response.send_message("無効なモードが指定されました。")
+        return
+    await interaction.response.send_message(f"{base if mode == 'other' else 'e'} ^ {exponent} = {result}")
 
 @tree.command(name='log', description="対数")
 @app_commands.describe(mode="対数の種類（自然対数、常用対数、二進対数）", value="対数を取る値")
@@ -127,12 +146,24 @@ async def log(interaction: discord.Interaction, mode: str, value: float):
         return
     await interaction.response.send_message(f"{mode}({value}) = {result}")
 
-
-@tree.command(name='sqrt', description="平方根")
-@app_commands.describe(value="平方根を取る値")
-async def sqrt(interaction: discord.Interaction, value: float):
-    result = math.sqrt(value)
-    await interaction.response.send_message(f"√{value} = {result}")
+@tree.command(name='root', description="平方根または累乗根")
+@app_commands.describe(mode="計算モード（平方根または累乗根）", value="根を取る値", radical="累乗根の次数")
+@app_commands.choices(mode=[
+    app_commands.Choice(name='平方根', value='sqrt'),
+    app_commands.Choice(name='累乗根', value='nroot')
+])
+async def root(interaction: discord.Interaction, mode: str, value: float, radical: int = 2):
+    if mode == 'sqrt':
+        result = math.sqrt(value)
+        await interaction.response.send_message(f"√{value} = {result}")
+    elif mode == 'nroot':
+        if radical <= 0:
+            await interaction.response.send_message("根の次数は正の整数でなければなりません。")
+            return
+        result = value ** (1 / radical)
+        await interaction.response.send_message(f"{value} の {radical} 乗根 = {result}")
+    else:
+        await interaction.response.send_message("無効なモードが指定されました。")
 
 @tree.command(name='sin', description="正弦(sin)・逆正弦(arcsin)")
 @app_commands.describe(mode="モード（sin or arcsin）", value="角度（度数法）または値")
@@ -191,7 +222,6 @@ async def sigma(interaction: discord.Interaction, k: int, n: int, sequence: str)
         await interaction.response.send_message(f"Σ({sequence}) from {k} to {n} = {total}")
     except Exception as e:
         await interaction.response.send_message(f"式の計算中にエラーが発生しました: {e}")
-
 
 
 #bot起動時の処理
