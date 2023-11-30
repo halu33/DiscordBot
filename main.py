@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 from config import TOKEN, GUILD_ID, INVITE
+from help_commands import commands_description
 import math
 import logging
 
@@ -32,26 +33,6 @@ async def test(interaction: discord.Interaction, str: str = None):
     else:
         message = "yo!" #引数が入力されなかった場合
     await interaction.response.send_message(message)
-
-#全コマンドの簡単な説明の辞書
-commands_description = {
-    'test': 'テストコマンド',
-    'help': 'helpコマンド',
-    'hello': '社会不適合者による残念な挨拶',
-    'invite': 'botの招待リンク',
-    'add': 'たし算',
-    'sub': 'ひき算',
-    'mul': 'かけ算',
-    'div': 'わり算',
-    'mod': '剰余',
-    'exp': '累乗',
-    'log': '対数',
-    'sqrt': '平方根',
-    'sin': '正弦(sin)',
-    'cos': '余弦(cos)',
-    'tan': '正接(tan)',
-    'sigma': '数列Σの計算'
-}
 
 #helpコマンドの実装
 @tree.command(name='help', description="helpコマンド")
