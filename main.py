@@ -37,6 +37,9 @@ async def test(interaction: discord.Interaction, str: str = None):
 #helpコマンド
 @tree.command(name='help', description="helpコマンド")
 @app_commands.describe(command="コマンド名（任意）")
+@app_commands.choices(command=[
+    app_commands.Choice(name=cmd, value=cmd) for cmd in commands_description.keys()
+])
 async def help(interaction: discord.Interaction, command: str = None):
     if command is None:
         messages = [f"/{cmd}: {desc}" for cmd, desc in commands_description.items()]
@@ -101,7 +104,6 @@ async def mod(interaction: discord.Interaction, x: int, y: int, x3: int = None, 
         await interaction.response.send_message("0で割ることはできません。")
         return
     numbers = [x, y] + [num for num in [x3, x4, x5] if num is not None]
-    # 最初の2つの数で剰余を計算し、その後の数で続けて剰余を取る
     result = numbers[0] % numbers[1]
     for num in numbers[2:]:
         result %= num
