@@ -53,7 +53,7 @@ async def help(interaction: discord.Interaction, command: str = None):
 @tree.command(name='hello', description="社会不適合者による残念な挨拶")
 async def hello(interaction: discord.Interaction):
     user_name = interaction.user.display_name   #ユーザーの表示名を取得
-    await interaction.response.send_message(f"よお{user_name}!")
+    await interaction.response.send_message(f"よお{user_name}")
 
 #bot招待リンク
 @tree.command(name='invite', description="botの招待リンク")
