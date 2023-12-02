@@ -70,33 +70,37 @@ async def hello(interaction: discord.Interaction):
     await interaction.response.send_message(f'botの招待リンク:{INVITE}')
 
 #四則演算
-@tree.command(name='add', description="たし算")
+@tree.group(name='math', description="数学計算コマンド")
+async def math(interaction: discord.Interaction):
+    pass
+
+@math.command(name='add', description="たし算")
 @app_commands.describe(num1="第一項", num2="第二項", num3="第三項（任意）", num4="第四項（任意）", num5="第五項（任意）")
-async def add(interaction: discord.Interaction, num1: int, num2: int, num3: int = None, num4: int = None, num5: int = None):
+async def math_add(interaction: discord.Interaction, num1: int, num2: int, num3: int = None, num4: int = None, num5: int = None):
     numbers = [num1, num2] + [num for num in [num3, num4, num5] if num is not None]
     total = sum(numbers)
     numbers_str = " + ".join(map(str, numbers))
     await interaction.response.send_message(f"{numbers_str} = {total}")
 
-@tree.command(name='sub', description="ひき算")
+@math.command(name='sub', description="ひき算")
 @app_commands.describe(num1="第一項", num2="第二項", num3="第三項（任意）", num4="第四項（任意）", num5="第五項（任意）")
-async def sub(interaction: discord.Interaction, num1: int, num2: int, num3: int = None, num4: int = None, num5: int = None):
+async def math_sub(interaction: discord.Interaction, num1: int, num2: int, num3: int = None, num4: int = None, num5: int = None):
     numbers = [num1, -num2] + [-num for num in [num3, num4, num5] if num is not None]
     result = sum(numbers)
     numbers_str = " - ".join(map(str, [num1] + [num2, num3, num4, num5]))
     await interaction.response.send_message(f"{numbers_str} = {result}")
 
-@tree.command(name='mul', description="かけ算")
+@math.command(name='mul', description="かけ算")
 @app_commands.describe(num1="第一項", num2="第二項", num3="第三項（任意）", num4="第四項（任意）", num5="第五項（任意）")
-async def mul(interaction: discord.Interaction, num1: int, num2: int, num3: int = None, num4: int = None, num5: int = None):
+async def math_mul(interaction: discord.Interaction, num1: int, num2: int, num3: int = None, num4: int = None, num5: int = None):
     numbers = [num1, num2] + [num for num in [num3, num4, num5] if num is not None]
     result = math.prod(numbers)
     numbers_str = " * ".join(map(str, numbers))
     await interaction.response.send_message(f"{numbers_str} = {result}")
 
-@tree.command(name='div', description="わり算")
+@math.command(name='div', description="わり算")
 @app_commands.describe(num1="被除数", num2="除数", num3="除数（任意）", num4="除数（任意）", num5="除数（任意）")
-async def div(interaction: discord.Interaction, num1: int, num2: int, num3: int = None, num4: int = None, num5: int = None):
+async def math_div(interaction: discord.Interaction, num1: int, num2: int, num3: int = None, num4: int = None, num5: int = None):
     if num2 == 0 or (num3 == 0 and num3 is not None) or (num4 == 0 and num4 is not None) or (num5 == 0 and num5 is not None):
         await interaction.response.send_message("0で割ることはできません。")
         return
@@ -106,9 +110,9 @@ async def div(interaction: discord.Interaction, num1: int, num2: int, num3: int 
         result /= num
     await interaction.response.send_message(f"{' / '.join(map(str, numbers))} = {result}")
 
-@tree.command(name='mod', description="剰余")
+@math.command(name='mod', description="剰余")
 @app_commands.describe(x="被除数", y="除数", x3="除数（任意）", x4="除数（任意）", x5="除数（任意）")
-async def mod(interaction: discord.Interaction, x: int, y: int, x3: int = None, x4: int = None, x5: int = None):
+async def math_mod(interaction: discord.Interaction, x: int, y: int, x3: int = None, x4: int = None, x5: int = None):
     if y == 0 or (x3 == 0 and x3 is not None) or (x4 == 0 and x4 is not None) or (x5 == 0 and x5 is not None):
         await interaction.response.send_message("0で割ることはできません。")
         return
@@ -119,13 +123,13 @@ async def mod(interaction: discord.Interaction, x: int, y: int, x3: int = None, 
     numbers_str = " % ".join(map(str, numbers))
     await interaction.response.send_message(f"{numbers_str} = {result}")
 
-@tree.command(name='exp', description="累乗")
+@math.command(name='exp', description="累乗")
 @app_commands.describe(mode="基数の種類（自然対数の底、または他の実数）", exponent="指数", base="基数（他の実数の場合）")
 @app_commands.choices(mode=[
     app_commands.Choice(name='自然対数の底 e', value='e'),
     app_commands.Choice(name='他の実数', value='other')
 ])
-async def exp(interaction: discord.Interaction, mode: str, exponent: int, base: float = None):
+async def math_exp(interaction: discord.Interaction, mode: str, exponent: int, base: float = None):
     if mode == 'e':
         result = math.exp(exponent)
     elif mode == 'other':
@@ -138,14 +142,14 @@ async def exp(interaction: discord.Interaction, mode: str, exponent: int, base: 
         return
     await interaction.response.send_message(f"{base if mode == 'other' else 'e'} ^ {exponent} = {result}")
 
-@tree.command(name='log', description="対数")
+@math.command(name='log', description="対数")
 @app_commands.describe(mode="対数の種類（自然対数、常用対数、二進対数）", value="対数を取る値")
 @app_commands.choices(mode=[
     app_commands.Choice(name='自然対数', value='natural'),
     app_commands.Choice(name='常用対数', value='common'),
     app_commands.Choice(name='二進対数', value='binary')
 ])
-async def log(interaction: discord.Interaction, mode: str, value: float):
+async def math_log(interaction: discord.Interaction, mode: str, value: float):
     if mode == 'natural':
         result = math.log(value)
     elif mode == 'common':
@@ -157,76 +161,72 @@ async def log(interaction: discord.Interaction, mode: str, value: float):
         return
     await interaction.response.send_message(f"{mode}({value}) = {result}")
 
-@tree.command(name='root', description="平方根または累乗根")
+@math.command(name='root', description="平方根または累乗根")
 @app_commands.describe(mode="計算モード（平方根または累乗根）", value="根を取る値", radical="累乗根の次数")
 @app_commands.choices(mode=[
     app_commands.Choice(name='平方根', value='sqrt'),
     app_commands.Choice(name='累乗根', value='nroot')
 ])
-async def root(interaction: discord.Interaction, mode: str, value: float, radical: int = 2):
+async def math_root(interaction: discord.Interaction, mode: str, value: float, radical: int = 2):
     if mode == 'sqrt':
         result = math.sqrt(value)
-        await interaction.response.send_message(f"√{value} = {result}")
     elif mode == 'nroot':
         if radical <= 0:
             await interaction.response.send_message("根の次数は正の整数でなければなりません。")
             return
         result = value ** (1 / radical)
-        await interaction.response.send_message(f"{value} の {radical} 乗根 = {result}")
     else:
         await interaction.response.send_message("無効なモードが指定されました。")
+    await interaction.response.send_message(f"{value} の {radical} 乗根 = {result}")
 
-@tree.command(name='sin', description="正弦(sin)・逆正弦(arcsin)")
+@math.command(name='sin', description="正弦(sin)・逆正弦(arcsin)")
 @app_commands.describe(mode="モード（sin or arcsin）", value="角度（度数法）または値")
 @app_commands.choices(mode=[
     app_commands.Choice(name='sin', value='sin'),
     app_commands.Choice(name='arcsin', value='arcsin')
 ])
-async def sin(interaction: discord.Interaction, mode: str, value: float):
+async def math_sin(interaction: discord.Interaction, mode: str, value: float):
     if mode == 'sin':
         result = math.sin(math.radians(value))
-        await interaction.response.send_message(f"sin({value}) = {result}")
     elif mode == 'arcsin':
         result = math.degrees(math.asin(value))
-        await interaction.response.send_message(f"arcsin({value}) = {result} degrees")
     else:
         await interaction.response.send_message("無効なモードが指定されました。")
+    await interaction.response.send_message(f"{mode}({value}) = {result}")
 
-@tree.command(name='cos', description="余弦(cos)・逆余弦(arccos)")
+@math.command(name='cos', description="余弦(cos)・逆余弦(arccos)")
 @app_commands.describe(mode="モード（cos or arccos）", value="角度（度数法）または値")
 @app_commands.choices(mode=[
     app_commands.Choice(name='cos', value='cos'),
     app_commands.Choice(name='arccos', value='arccos')
 ])
-async def cos(interaction: discord.Interaction, mode: str, value: float):
+async def math_cos(interaction: discord.Interaction, mode: str, value: float):
     if mode == 'cos':
         result = math.cos(math.radians(value))
-        await interaction.response.send_message(f"cos({value}) = {result}")
     elif mode == 'arccos':
         result = math.degrees(math.acos(value))
-        await interaction.response.send_message(f"arccos({value}) = {result} degrees")
     else:
         await interaction.response.send_message("無効なモードが指定されました。")
+    await interaction.response.send_message(f"{mode}({value}) = {result}")
 
-@tree.command(name='tan', description="正接(tan)・逆正接(arctan)")
+@math.command(name='tan', description="正接(tan)・逆正接(arctan)")
 @app_commands.describe(mode="モード（tan or arctan）", value="角度（度数法）または値")
 @app_commands.choices(mode=[
     app_commands.Choice(name='tan', value='tan'),
     app_commands.Choice(name='arctan', value='arctan')
 ])
-async def tan(interaction: discord.Interaction, mode: str, value: float):
+async def math_tan(interaction: discord.Interaction, mode: str, value: float):
     if mode == 'tan':
         result = math.tan(math.radians(value))
-        await interaction.response.send_message(f"tan({value}) = {result}")
     elif mode == 'arctan':
         result = math.degrees(math.atan(value))
-        await interaction.response.send_message(f"arctan({value}) = {result} degrees")
     else:
         await interaction.response.send_message("無効なモードが指定されました。")
+    await interaction.response.send_message(f"{mode}({value}) = {result}")
 
-@tree.command(name='sigma', description="数列Σの計算")
+@math.command(name='sigma', description="数列Σの計算")
 @app_commands.describe(k="シグマの下限値", n="シグマの上限値", sequence="計算する数列の式（'k'を変数として使用）例:k、k*k、k+3など")
-async def sigma(interaction: discord.Interaction, k: int, n: int, sequence: str):
+async def math_sigma(interaction: discord.Interaction, k: int, n: int, sequence: str):
     try:
         total = sum(eval(sequence.replace("k", str(i))) for i in range(k, n + 1))
         await interaction.response.send_message(f"Σ({sequence}) from {k} to {n} = {total}")
