@@ -35,7 +35,7 @@ tree = bot.tree
 
 #テストコマンド
 @tree.command(name='test', description="テストコマンド")
-@app_commands.describe(str="文字をここに打て！！！")
+@app_commands.describe(str="文字をここに打て！！")
 async def test(interaction: discord.Interaction, str: str = None):
     if str:
         message = f"yo! {str}" #引数が入力された場合
@@ -258,12 +258,20 @@ async def convert_calc(interaction: discord.Interaction, format: str, team1: str
     command_str = f'^calc {format}, ' + player_names
     await interaction.response.send_message(command_str)
 
-#投票コマンド
+# 投票コマンド
+def create_poll_embed(poll, author):
+    embed = discord.Embed(title=poll['title'], description=poll['description'], color=0x00ff4c, timestamp=datetime.now())
+    embed.set_footer(text=f"作成者: {author.display_name}", icon_url=author.avatar.url if author.avatar else None)
+    for choice, voters in zip(poll['choices'], poll['votes']):
+        embed.add_field(name=choice, value="\n".join(voters) if voters else "まだ投票がありません", inline=True)
+    return embed
+
 class PollButton(discord.ui.Button):
-    def __init__(self, label, poll_id, choice_index):
-        super().__init__(style=discord.ButtonStyle.primary, label=label)
+    def __init__(self, label, poll_id, choice_index, is_end_button=False):
+        super().__init__(style=discord.ButtonStyle.primary if not is_end_button else discord.ButtonStyle.red, label=label)
         self.poll_id = poll_id
         self.choice_index = choice_index
+        self.is_end_button = is_end_button
 
     async def callback(self, interaction: discord.Interaction):
         global polls
@@ -274,8 +282,9 @@ class PollButton(discord.ui.Button):
             for vote_set in poll['votes']:
                 vote_set.discard(user)
 
-        poll['votes'][self.choice_index].add(user)
-        await interaction.response.edit_message(embed=create_poll_embed(poll, interaction.user), view=PollView(self.poll_id))
+        if not self.is_end_button:
+            poll['votes'][self.choice_index].add(user)
+            await interaction.response.edit_message(embed=create_poll_embed(poll, interaction.user), view=PollView(self.poll_id))
 
 class PollView(discord.ui.View):
     def __init__(self, poll_id):
@@ -285,13 +294,23 @@ class PollView(discord.ui.View):
         for i, choice in enumerate(poll['choices']):
             self.add_item(PollButton(label=choice, poll_id=poll_id, choice_index=i))
 
-def create_poll_embed(poll, author):
-    embed = discord.Embed(title=poll['title'], description=poll['description'], color=0x00ff4c, timestamp=datetime.now())
-    embed.set_footer(text=f"作成者: {author.display_name}", icon_url=author.avatar.url if author.avatar else None)
-    for choice, voters in zip(poll['choices'], poll['votes']):
-        embed.add_field(name=choice, value="\n".join(voters) if voters else "まだ投票がありません", inline=True)
-    return embed
+        end_button = PollButton(label="終了", poll_id=poll_id, choice_index=-1, is_end_button=True)
+        end_button.style = discord.ButtonStyle.red
+        self.add_item(end_button)
 
+    async def on_button_click(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if button.is_end_button:
+            poll = polls[self.poll_id]
+            embed = create_poll_embed(poll, interaction.user)
+            embed.title = f"投票が終了しました: {poll['title']}"
+            embed.description = f"結果が確定しました。"
+
+            for item in self.children:
+                item.disabled = True
+
+            await interaction.response.edit_message(embed=embed, view=self)
+        else:
+            await super().on_button_click(interaction, button)
 
 @bot.tree.command(name='poll', description='投票を作成する')
 @app_commands.describe(
@@ -320,7 +339,6 @@ async def poll(interaction: discord.Interaction, title: str, description: str, a
     await interaction.response.send_message(embed=create_poll_embed(poll, interaction.user), view=PollView(poll_id))
 
 polls = []
-
 
 
 #bot起動時の処理
