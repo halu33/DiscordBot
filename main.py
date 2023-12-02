@@ -1,17 +1,18 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
-from config import TOKEN, GUILD_ID, INVITE
 from help_commands import commands_description, detailed_commands_description
 import math
 import logging
 from datetime import datetime
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 TOKEN = os.environ.get('TOKEN')
 GUILD_ID = os.environ.get('GUILD_ID')
 INVITE = os.environ.get('INVITE')
-
 
 
 #Logging設定
