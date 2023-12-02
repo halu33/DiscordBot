@@ -5,6 +5,8 @@ from config import TOKEN, GUILD_ID, INVITE
 from help_commands import commands_description, detailed_commands_description
 import math
 import logging
+from datetime import datetime
+
 
 #Logging設定
 logging.basicConfig(level=logging.INFO,
@@ -26,7 +28,7 @@ tree = bot.tree
 
 #テストコマンド
 @tree.command(name='test', description="テストコマンド")
-@app_commands.describe(str="文字を打て")
+@app_commands.describe(str="文字をここに打て！！！")
 async def test(interaction: discord.Interaction, str: str = None):
     if str:
         message = f"yo! {str}" #引数が入力された場合
@@ -215,7 +217,6 @@ async def tan(interaction: discord.Interaction, mode: str, value: float):
     else:
         await interaction.response.send_message("無効なモードが指定されました。")
 
-
 @tree.command(name='sigma', description="数列Σの計算")
 @app_commands.describe(k="シグマの下限値", n="シグマの上限値", sequence="計算する数列の式（'k'を変数として使用）例:k、k*k、k+3など")
 async def sigma(interaction: discord.Interaction, k: int, n: int, sequence: str):
@@ -224,7 +225,6 @@ async def sigma(interaction: discord.Interaction, k: int, n: int, sequence: str)
         await interaction.response.send_message(f"Σ({sequence}) from {k} to {n} = {total}")
     except Exception as e:
         await interaction.response.send_message(f"式の計算中にエラーが発生しました: {e}")
-
 
 #statsbotのcalcコマンドフォーマット変換
 @bot.tree.command(name='convert-calc', description='Convert to calc command format')
@@ -250,6 +250,70 @@ async def convert_calc(interaction: discord.Interaction, format: str, team1: str
     player_names = ', '.join([name for team in teams for name in team.split(', ')])
     command_str = f'^calc {format}, ' + player_names
     await interaction.response.send_message(command_str)
+
+#投票コマンド
+class PollButton(discord.ui.Button):
+    def __init__(self, label, poll_id, choice_index):
+        super().__init__(style=discord.ButtonStyle.primary, label=label)
+        self.poll_id = poll_id
+        self.choice_index = choice_index
+
+    async def callback(self, interaction: discord.Interaction):
+        global polls
+        poll = polls[self.poll_id]
+        user = interaction.user.display_name
+
+        if not poll['allow_duplicate']:
+            for vote_set in poll['votes']:
+                vote_set.discard(user)
+
+        poll['votes'][self.choice_index].add(user)
+        await interaction.response.edit_message(embed=create_poll_embed(poll, interaction.user), view=PollView(self.poll_id))
+
+class PollView(discord.ui.View):
+    def __init__(self, poll_id):
+        super().__init__()
+        self.poll_id = poll_id
+        poll = polls[poll_id]
+        for i, choice in enumerate(poll['choices']):
+            self.add_item(PollButton(label=choice, poll_id=poll_id, choice_index=i))
+
+def create_poll_embed(poll, author):
+    embed = discord.Embed(title=poll['title'], description=poll['description'], color=0x00ff4c, timestamp=datetime.now())
+    embed.set_footer(text=f"作成者: {author.display_name}", icon_url=author.avatar.url if author.avatar else None)
+    for choice, voters in zip(poll['choices'], poll['votes']):
+        embed.add_field(name=choice, value="\n".join(voters) if voters else "まだ投票がありません", inline=True)
+    return embed
+
+
+@bot.tree.command(name='poll', description='投票を作成する')
+@app_commands.describe(
+    title='タイトル',
+    description='投票の詳細（任意）',
+    allow_duplicate='投票の重複を許可するか（true or false）',
+    choices='選択肢 (カンマ区切りで最大10個)'
+)
+async def poll(interaction: discord.Interaction, title: str, description: str, allow_duplicate: bool, choices: str):
+    choices_list = choices.split(',')
+    if len(choices_list) > 10:
+        await interaction.response.send_message("選択肢は10個までです。")
+        return
+
+    poll_id = len(polls)
+    poll = {
+        'title': title,
+        'description': description,
+        'choices': choices_list,
+        'votes': [set() for _ in choices_list],
+        'allow_duplicate': allow_duplicate,
+        'author': interaction.user
+    }
+    polls.append(poll)
+
+    await interaction.response.send_message(embed=create_poll_embed(poll, interaction.user), view=PollView(poll_id))
+
+polls = []
+
 
 
 #bot起動時の処理
