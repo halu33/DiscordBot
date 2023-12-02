@@ -15,7 +15,8 @@ commands_description = {
     'sin': '正弦(sin)',
     'cos': '余弦(cos)',
     'tan': '正接(tan)',
-    'sigma': '数列Σの計算'
+    'sigma': '数列Σの計算',
+    'poll': '投票コマンド'
 }
 
 #コマンドの説明
@@ -35,5 +36,6 @@ detailed_commands_description = {
     'sin': 'sinの計算。modeで三角関数か逆三角関数を選択できる。引数valueに値を入力',
     'cos': 'cosの計算。modeで三角関数か逆三角関数を選択できる。引数valueに値を入力',
     'tan': 'tanの計算。modeで三角関数か逆三角関数を選択できる。引数valueに値を入力',
-    'sigma': '数列Σの計算。引数kに下限値、引数nに上限値、引数sequenceに一般項を入力、一般項はk,k*2,k+5,k^2のように入力'
+    'sigma': '数列Σの計算。引数kに下限値、引数nに上限値、引数sequenceに一般項を入力、一般項はk,k*2,k+5,k^2のように入力',
+    'poll': '投票コマンド。タイトル、説明文（任意）、重複投票可能か、選択肢（1～10をカンマ区切り）を入力'
 }
