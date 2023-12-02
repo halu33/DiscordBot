@@ -6,6 +6,12 @@ from help_commands import commands_description, detailed_commands_description
 import math
 import logging
 from datetime import datetime
+import os
+
+TOKEN = os.environ.get('TOKEN')
+GUILD_ID = os.environ.get('GUILD_ID')
+INVITE = os.environ.get('INVITE')
+
 
 
 #Logging設定
