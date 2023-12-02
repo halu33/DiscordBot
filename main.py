@@ -26,7 +26,7 @@ tree = bot.tree
 
 #テストコマンド
 @tree.command(name='test', description="テストコマンド")
-@app_commands.describe(str="文字")
+@app_commands.describe(str="文字を打て")
 async def test(interaction: discord.Interaction, str: str = None):
     if str:
         message = f"yo! {str}" #引数が入力された場合
@@ -226,6 +226,32 @@ async def sigma(interaction: discord.Interaction, k: int, n: int, sequence: str)
         await interaction.response.send_message(f"式の計算中にエラーが発生しました: {e}")
 
 
+#statsbotのcalcコマンドフォーマット変換
+@bot.tree.command(name='convert-calc', description='Convert to calc command format')
+@app_commands.describe(
+    format="ゲームの形式を選択",
+    team1='Team 1 members (comma-separated)',
+    team2='Team 2 members (comma-separated)',
+    team3='Team 3 members (comma-separated, optional)',
+    team4='Team 4 members (comma-separated, optional)',
+    team5='Team 5 members (comma-separated, optional)',
+    team6='Team 6 members (comma-separated, optional)'
+)
+@app_commands.choices(format=[
+    app_commands.Choice(name='2v2', value='2'),
+    app_commands.Choice(name='3v3', value='3'),
+    app_commands.Choice(name='4v4', value='4'),
+    app_commands.Choice(name='6v6', value='6')
+])
+async def convert_calc(interaction: discord.Interaction, format: str, team1: str, team2: str, team3: str = '', team4: str = '', team5: str = '', team6: str = ''):
+    teams = [team1, team2, team3, team4, team5, team6]
+    teams = [team for team in teams if team]
+
+    player_names = ', '.join([name for team in teams for name in team.split(', ')])
+    command_str = f'^calc {format}, ' + player_names
+    await interaction.response.send_message(command_str)
+
+
 #bot起動時の処理
 @bot.event
 async def on_ready():
@@ -235,10 +261,12 @@ async def on_ready():
     await tree.sync()
     await tree.sync(guild=discord.Object(id=GUILD_ID))
 
+
 #エラーハンドリングとログ記録
 @bot.event
 async def on_command_completion(ctx):
     logging.info(f'コマンド実行: {ctx.command} by {ctx.author}')
+
 
 #bot起動
 bot.run(TOKEN)
