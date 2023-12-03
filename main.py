@@ -4,16 +4,18 @@ from discord import app_commands
 from help_commands import commands_description, detailed_commands_description
 import math
 import logging
-from datetime import datetime
+import time
+from datetime import datetime, timedelta
 import os
 from dotenv import load_dotenv
 
+#test 環境変数読み込み
 load_dotenv()
 
+#heroku 環境変数の読み込み
 TOKEN = os.environ.get('TOKEN')
 GUILD_ID = os.environ.get('GUILD_ID')
 INVITE = os.environ.get('INVITE')
-
 
 #Logging設定
 logging.basicConfig(level=logging.INFO,
@@ -24,18 +26,21 @@ logging.basicConfig(level=logging.INFO,
 #インテントの設定
 intents = discord.Intents.all()
 
-#ボットの設定
+#botの設定
 bot = commands.Bot(command_prefix="?", intents=intents, case_insensitive=True, help_command=None)
 
 #スラッシュコマンド用のTreeを取得
 tree = bot.tree
 
 
-#スラッシュコマンドの定義
-
+"""
+********************************************************************************
+コマンド処理
+********************************************************************************
+"""
 #テストコマンド
 @tree.command(name='test', description="テストコマンド")
-@app_commands.describe(str="文字をここに打てyo！！")
+@app_commands.describe(str="文字をここに打てyo!!")
 async def test(interaction: discord.Interaction, str: str = None):
     if str:
         message = f"yo! {str}" #引数が入力された場合
@@ -231,7 +236,7 @@ async def math_sigma(interaction: discord.Interaction, k: int, n: int, sequence:
     except Exception as e:
         await interaction.response.send_message(f"式の計算中にエラーが発生しました: {e}")
 
-# 最後に、グループをボットのコマンドツリーに追加
+#グループをボットのコマンドツリーに追加
 bot.tree.add_command(math)
 
 #statsbotのcalcコマンドフォーマット変換
@@ -259,10 +264,12 @@ async def convert_calc(interaction: discord.Interaction, format: str, team1: str
     command_str = f'^calc {format}, ' + player_names
     await interaction.response.send_message(command_str)
 
-# 投票コマンド
-def create_poll_embed(poll, author):
+#投票コマンド
+def create_poll_embed(poll, author, end_time):
     embed = discord.Embed(title=poll['title'], description=poll['description'], color=0x00ff4c, timestamp=datetime.now())
     embed.set_footer(text=f"作成者: {author.display_name}", icon_url=author.avatar.url if author.avatar else None)
+    end_timestamp = int(time.mktime(end_time.timetuple()))
+    embed.add_field(name="投票期限", value=f"<t:{end_timestamp}:F> <t:{end_timestamp}:R>", inline=False)
     for choice, voters in zip(poll['choices'], poll['votes']):
         embed.add_field(name=choice, value="\n".join(voters) if voters else "まだ投票がありません", inline=True)
     return embed
@@ -273,45 +280,34 @@ class PollButton(discord.ui.Button):
         self.poll_id = poll_id
         self.choice_index = choice_index
         self.is_end_button = is_end_button
-
     async def callback(self, interaction: discord.Interaction):
         global polls
         poll = polls[self.poll_id]
         user = interaction.user.display_name
-
-        if not poll['allow_duplicate']:
-            for vote_set in poll['votes']:
-                vote_set.discard(user)
-
         if not self.is_end_button:
+            if not poll['allow_duplicate']:
+                for vote_set in poll['votes']:
+                    vote_set.discard(user)
             poll['votes'][self.choice_index].add(user)
-            await interaction.response.edit_message(embed=create_poll_embed(poll, interaction.user), view=PollView(self.poll_id))
+            await interaction.response.edit_message(embed=create_poll_embed(poll, interaction.user, poll['end_time']), view=PollView(self.poll_id, poll['end_time']))
+        else:
+            embed = create_poll_embed(poll, interaction.user, poll['end_time'])
+            embed.title = f"投票が終了しました: {poll['title']}"
+            embed.description = f"結果が確定しました。: {poll['description']}"
+            for item in self.view.children:
+                item.disabled = True
+            await interaction.response.edit_message(embed=embed, view=self.view)
 
 class PollView(discord.ui.View):
-    def __init__(self, poll_id):
+    def __init__(self, poll_id, end_time):
         super().__init__()
         self.poll_id = poll_id
+        self.end_time = end_time
         poll = polls[poll_id]
         for i, choice in enumerate(poll['choices']):
             self.add_item(PollButton(label=choice, poll_id=poll_id, choice_index=i))
-
         end_button = PollButton(label="終了", poll_id=poll_id, choice_index=-1, is_end_button=True)
-        end_button.style = discord.ButtonStyle.red
         self.add_item(end_button)
-
-    async def on_button_click(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if button.is_end_button:
-            poll = polls[self.poll_id]
-            embed = create_poll_embed(poll, interaction.user)
-            embed.title = f"投票が終了しました: {poll['title']}"
-            embed.description = f"結果が確定しました。"
-
-            for item in self.children:
-                item.disabled = True
-
-            await interaction.response.edit_message(embed=embed, view=self)
-        else:
-            await super().on_button_click(interaction, button)
 
 @bot.tree.command(name='poll', description='投票を作成する')
 @app_commands.describe(
@@ -325,7 +321,7 @@ async def poll(interaction: discord.Interaction, title: str, description: str, a
     if len(choices_list) > 10:
         await interaction.response.send_message("選択肢は10個までです。")
         return
-
+    end_time = datetime.now() + timedelta(hours=24)
     poll_id = len(polls)
     poll = {
         'title': title,
@@ -333,16 +329,19 @@ async def poll(interaction: discord.Interaction, title: str, description: str, a
         'choices': choices_list,
         'votes': [set() for _ in choices_list],
         'allow_duplicate': allow_duplicate,
-        'author': interaction.user
+        'author': interaction.user,
+        'end_time': end_time
     }
     polls.append(poll)
-
-    await interaction.response.send_message(embed=create_poll_embed(poll, interaction.user), view=PollView(poll_id))
-
+    await interaction.response.send_message(embed=create_poll_embed(poll, interaction.user, end_time), view=PollView(poll_id, end_time))
 polls = []
 
 
-#bot起動時の処理
+"""
+********************************************************************************
+bot起動時の処理
+********************************************************************************
+"""
 @bot.event
 async def on_ready():
     guild_count = len(bot.guilds)
@@ -352,11 +351,19 @@ async def on_ready():
     await tree.sync(guild=discord.Object(id=GUILD_ID))
 
 
-#エラーハンドリングとログ記録
+"""
+********************************************************************************
+エラーハンドリングとログ記録
+********************************************************************************
+"""
 @bot.event
 async def on_command_completion(ctx):
     logging.info(f'コマンド実行: {ctx.command} by {ctx.author}')
 
 
-#bot起動
+"""
+********************************************************************************
+bot起動
+********************************************************************************
+"""
 bot.run(TOKEN)
