@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
+from discord.ui import Button, View
 from help_commands import commands_description, detailed_commands_description
 import math
 import logging
@@ -49,19 +50,43 @@ async def test(interaction: discord.Interaction, str: str = None):
     await interaction.response.send_message(message)
 
 #helpコマンド
-@tree.command(name='help', description="helpコマンド")
-@app_commands.describe(command="コマンド名（任意）")
-@app_commands.choices(command=[
-    app_commands.Choice(name=cmd, value=cmd) for cmd in commands_description.keys()
-])
-async def help(interaction: discord.Interaction, command: str = None):
-    if command is None:
-        messages = [f"/{cmd}: {desc}" for cmd, desc in commands_description.items()]
-        await interaction.response.send_message("\n".join(messages))
-    elif command in detailed_commands_description:
-        await interaction.response.send_message(f"/{command}: {detailed_commands_description[command]}")
-    else:
-        await interaction.response.send_message(f"コマンド '{command}' は存在しません。")
+#help_commands.pyに定義されたコマンドの説明を取得
+def get_command_description(command_name):
+    return detailed_commands_description.get(command_name, "コマンドの説明が見つかりませんでした。")
+
+#helpコマンド詳細のEmbedを作成
+def create_detailed_help_embed(command_name):
+    description = get_command_description(command_name)
+    embed = discord.Embed(
+        title=f"{command_name}コマンドの詳細",
+        description=description,
+        color=discord.Color.green()
+    )
+    embed.add_field(name="", value=f"`/{command_name}` とチャットで入力してみてください。", inline=False)
+    embed.set_footer(text="@HALU_33", icon_url="https://halu33.net/img/epril_icon.png")
+    return embed
+
+#helpコマンド詳細を表示するボタン
+async def detailed_help_button_callback(interaction: discord.Interaction, command_name: str):
+    embed = create_detailed_help_embed(command_name)
+    await interaction.response.send_message(embed=embed)
+
+#helpコマンドの定義
+@bot.tree.command(name='help', description="helpコマンド")
+async def help(interaction: discord.Interaction):
+    embed = discord.Embed(
+        title="helpコマンド",
+        description="このbotのコマンド一覧と説明",
+        color=discord.Color.green()
+    )
+    for command, description in commands_description.items():
+        embed.add_field(name=command, value=description, inline=True)
+    view = View()
+    for cmd in commands_description.keys():
+        button = Button(label=cmd, style=discord.ButtonStyle.primary)
+        button.callback = lambda interaction, cmd=cmd: detailed_help_button_callback(interaction, cmd)
+        view.add_item(button)
+    await interaction.response.send_message(embed=embed, view=view)
 
 #挨拶コマンド
 @tree.command(name='hello', description="社会不適合者による残念な挨拶")
