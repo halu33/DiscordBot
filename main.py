@@ -8,6 +8,7 @@ import logging
 import time
 from datetime import datetime, timedelta
 import os
+import asyncio
 from dotenv import load_dotenv
 
 #test 環境変数読み込み
@@ -41,12 +42,12 @@ tree = bot.tree
 """
 #テストコマンド
 @tree.command(name='test', description="テストコマンド")
-@app_commands.describe(str="文字をここに打てyo!!")
+@app_commands.describe(str="文字をここに打てyo!!yo!!")
 async def test(interaction: discord.Interaction, str: str = None):
     if str:
-        message = f"yo! {str}" #引数が入力された場合
+        message = f"yop! {str}" #引数が入力された場合
     else:
-        message = "yo!" #引数が入力されなかった場合
+        message = "yoo" #引数が入力されなかった場合
     await interaction.response.send_message(message)
 
 #helpコマンド
@@ -361,6 +362,132 @@ async def poll(interaction: discord.Interaction, title: str, description: str, a
     polls.append(poll)
     await interaction.response.send_message(embed=create_poll_embed(poll, interaction.user, end_time), view=PollView(poll_id, end_time))
 polls = []
+
+
+#挙手コマンド
+class Recruitment:
+    def __init__(self):
+        self.confirmed = set()
+        self.tentative = set()
+        self.standby = set()
+    def update_member_status(self, member, new_status):
+        if new_status != 'c':
+            self.confirmed.discard(member)
+        if new_status != 'r':
+            self.tentative.discard(member)
+        if new_status != 's':
+            self.standby.discard(member)
+
+        if new_status == 'c':
+            self.confirmed.add(member)
+        elif new_status == 'r':
+            self.tentative.add(member)
+        elif new_status == 's':
+            self.standby.add(member)
+recruitment_status = {}
+
+class RecruitmentButton(discord.ui.Button):
+    def __init__(self, label, custom_id):
+        super().__init__(style=discord.ButtonStyle.primary, label=label, custom_id=custom_id)
+    async def callback(self, interaction: discord.Interaction):
+        global recruitment_status
+        time = self.label
+        user = interaction.user
+        if time not in recruitment_status:
+            recruitment_status[time] = Recruitment()
+        recruitment = recruitment_status[time]
+        if user in recruitment.confirmed or user in recruitment.tentative or user in recruitment.standby:
+            recruitment.confirmed.discard(user)
+            recruitment.tentative.discard(user)
+            recruitment.standby.discard(user)
+            action = '挙手取り下げ'
+        else:
+            recruitment.confirmed.add(user)
+            action = '挙手'
+        last_message = await get_last_message(interaction.channel)
+        await update_recruitment_message(interaction.channel, target_member=user, action=action)
+
+async def update_recruitment_message(channel, target_member=None, action='', times=None):
+    global recruitment_status
+    embed = discord.Embed(title="募集状況", description="", color=0x00ff4c)
+    view = discord.ui.View()
+    sorted_times = sorted(recruitment_status.keys(), key=lambda x: int(x))
+    for time in sorted_times:
+        recruitment = recruitment_status[time]
+        total_members = len(recruitment.confirmed) + len(recruitment.tentative) + len(recruitment.standby)
+        remaining_slots = 6 - len(recruitment.confirmed)
+        remaining_including_tentative = 6 - total_members
+        confirmed_members = "確定：" + " ".join([f"<@{member.id}>" for member in recruitment.confirmed]) or "なし"
+        tentative_members = "仮：" + " ".join([f"<@{member.id}>" for member in recruitment.tentative]) or "なし"
+        standby_members = "補欠：" + " ".join([f"<@{member.id}>" for member in recruitment.standby]) or "なし"
+        remaining_text = f"@{remaining_slots}"
+        if total_members > len(recruitment.confirmed):
+            remaining_text += f"({remaining_including_tentative})"
+        embed.add_field(name=f"{time}時 {remaining_text}", value=f"{confirmed_members}\n{tentative_members}\n{standby_members}", inline=False)
+        view.add_item(RecruitmentButton(label=time, custom_id=f"recruit_{time}"))
+    async for message in channel.history(limit=10):
+        if message.embeds and message.author.id == bot.user.id:
+            await message.delete()
+            break
+    await channel.send(embed=embed, view=view)
+async def get_last_message(channel):
+    async for message in channel.history(limit=1):
+        return message
+    return None
+
+# canコマンド
+@bot.tree.command(name='can', description='メンバーを募集or挙手をする')
+@app_commands.choices(type=[
+    app_commands.Choice(name='確定', value='c'),
+    app_commands.Choice(name='仮', value='r'),
+    app_commands.Choice(name='補欠', value='s')
+])
+async def can(interaction: discord.Interaction, time: str, type: str = 'c', member: discord.Member = None):
+    target_member = member or interaction.user
+    new_times = time.split()
+    sorted_times = sorted(set(new_times), key=lambda x: int(x))
+    times_str = " ".join(sorted_times)
+    last_message = await get_last_message(interaction.channel)
+    for t in sorted_times:
+        if t not in recruitment_status:
+            recruitment_status[t] = Recruitment()
+        recruitment_status[t].update_member_status(target_member, type)
+    await interaction.response.defer(ephemeral=True)
+    await interaction.followup.send(f"<@{target_member.id}>が{times_str}時に挙手しました。", ephemeral=True)
+    await update_recruitment_message(interaction.channel, target_member=target_member, action='挙手', times=times_str)
+
+# dropコマンド
+@bot.tree.command(name='drop', description='挙手を取り下げる')
+async def drop(interaction: discord.Interaction, time: str, member: discord.Member = None):
+    target_member = member or interaction.user
+    new_times = time.split()
+    sorted_times = sorted(set(new_times), key=lambda x: int(x))
+    times_str = " ".join(sorted_times)
+    last_message = await get_last_message(interaction.channel)
+    for t in sorted_times:
+        if t in recruitment_status:
+            recruitment_status[t].update_member_status(target_member, 'drop')
+    await interaction.response.defer(ephemeral=True)
+    await interaction.followup.send(f"<@{target_member.id}>が{times_str}時の挙手を取り下げました。", ephemeral=True)
+    await update_recruitment_message(interaction.channel, target_member=target_member, action='挙手取り下げ', times=times_str)
+
+# nowコマンド
+@bot.tree.command(name='now', description='現在の募集状況を表示する')
+async def now(interaction: discord.Interaction):
+    last_message = await get_last_message(interaction.channel)
+    await interaction.response.defer(ephemeral=True)
+    # recruitment_status が空かどうかチェック
+    if not recruitment_status:
+        await interaction.followup.send("現在の募集はありません。", ephemeral=False)
+    else:
+        await update_recruitment_message(interaction.channel, message_to_delete=last_message)
+
+# clearコマンド
+@bot.tree.command(name='clear', description='募集状況をリセットする')
+async def clear(interaction: discord.Interaction):
+    global recruitment_status
+    recruitment_status.clear()
+    await interaction.response.send_message("募集状況をリセットしました。", ephemeral=False)
 
 
 """
