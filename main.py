@@ -401,24 +401,33 @@ async def update_recruitment_message(channel, target_member=None, action='', tim
     embed = discord.Embed(title="募集状況", description="", color=0x00ff4c, timestamp=datetime.now())
     view = discord.ui.View()
     sorted_times = sorted(recruitment_status.keys(), key=lambda x: int(x))
+
     for time in sorted_times:
         recruitment = recruitment_status[time]
         confirmed_count = len(recruitment.confirmed)
         total_members = len(recruitment.confirmed) + len(recruitment.tentative) + len(recruitment.standby)
+
+        # 確定メンバーが6人以下の場合は6人、7人以上の場合は12人の募集人数
         max_members = 12 if confirmed_count >= 7 else 6
-        remaining_slots_6 = max(0, 6 - confirmed_count)
-        remaining_slots_12 = max(0, 12 - confirmed_count)
+        remaining_slots = max(0, max_members - confirmed_count)
         remaining_including_tentative = max(0, max_members - total_members)
+
         confirmed_members = ">>> 確定：" + " ".join([f"<@{member.id}>" for member in recruitment.confirmed]) or "なし"
         tentative_members = "仮：" + " ".join([f"<@{member.id}>" for member in recruitment.tentative]) or "なし"
         standby_members = "補欠：" + " ".join([f"<@{member.id}>" for member in recruitment.standby]) or "なし"
-        remaining_text = f"@{remaining_slots_12}"
-        if confirmed_count >= 7:
-            remaining_text = f"@{remaining_slots_6} ※@{remaining_slots_12}"
-        if total_members > len(recruitment.confirmed):
-            remaining_text += f"({remaining_including_tentative})"
+
+        if max_members == 6:
+            remaining_text = f"@{remaining_slots}"
+        else:
+            remaining_text_6 = max(0, 6 - confirmed_count)
+            remaining_text = f"@{remaining_text_6}/@{remaining_slots}"
+
+        if total_members > confirmed_count:
+            remaining_text += f" ({remaining_including_tentative})"
+
         embed.add_field(name=f"__{time}時 {remaining_text}__", value=f"{confirmed_members}\n{tentative_members}\n{standby_members}", inline=False)
         view.add_item(RecruitmentButton(label=time, custom_id=f"recruit_{time}"))
+
     async for message in channel.history(limit=10):
         if message.embeds and message.author.id == bot.user.id:
             await message.delete()
