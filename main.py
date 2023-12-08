@@ -1,8 +1,8 @@
+#ライブラリ
 import discord
 from discord.ext import commands
 from discord import app_commands
 from discord.ui import Button, View
-from help_commands import commands_description, detailed_commands_description
 import math as math_module
 import logging
 import time
@@ -10,6 +10,9 @@ from datetime import datetime, timedelta
 import os
 import asyncio
 from dotenv import load_dotenv
+
+#help_commands.py
+from help_commands import commands_description, detailed_commands_description
 
 #test 環境変数読み込み
 load_dotenv()
@@ -42,18 +45,18 @@ tree = bot.tree
 """
 #テストコマンド
 @tree.command(name='test', description="テストコマンド")
-@app_commands.describe(str="文字をここに打てよー!!yoyo!!")
+@app_commands.describe(str="文字をここに打てよー")
 async def test(interaction: discord.Interaction, str: str = None):
     if str:
-        message = f"yop! {str}" #引数が入力された場合
+        message = f"yo! {str}"
     else:
-        message = "yoo" #引数が入力されなかった場合
+        message = "yoo!"
     await interaction.response.send_message(message)
 
 #挨拶コマンド
 @tree.command(name='hello', description="社会不適合者による残念な挨拶")
 async def hello(interaction: discord.Interaction):
-    user_name = interaction.user.display_name   #ユーザーの表示名を取得
+    user_name = interaction.user.display_name
     await interaction.response.send_message(f"よお{user_name}")
 
 #bot招待リンク
@@ -69,6 +72,7 @@ helpコマンド
 #help_commands.pyに定義されたコマンドの説明を取得
 def get_command_description(command_name):
     return detailed_commands_description.get(command_name, "コマンドの説明が見つかりませんでした。")
+
 #helpコマンド詳細のEmbedを作成
 def create_detailed_help_embed(command_name):
     description = get_command_description(command_name)
@@ -80,10 +84,12 @@ def create_detailed_help_embed(command_name):
     embed.add_field(name="", value=f"`/{command_name}` とチャットで入力してみてください。", inline=False)
     embed.set_footer(text="@HALU_33", icon_url="https://halu33.net/img/epril_icon.png")
     return embed
+
 #helpコマンド詳細を表示するボタン
 async def detailed_help_button_callback(interaction: discord.Interaction, command_name: str):
     embed = create_detailed_help_embed(command_name)
     await interaction.response.send_message(embed=embed)
+
 #helpコマンドの定義
 @bot.tree.command(name='help', description="helpコマンド")
 async def help(interaction: discord.Interaction):
@@ -108,7 +114,10 @@ mathコマンド
 """
 #コマンドグループの定義
 math_commands = app_commands.Group(name="math_commands", description="数学計算コマンド")
+
 #サブコマンド
+
+#たし算
 @math_commands.command(name="add", description="たし算")
 @app_commands.describe(num1="第一項", num2="第二項", num3="第三項（任意）", num4="第四項（任意）", num5="第五項（任意）")
 async def math_add(interaction: discord.Interaction, num1: int, num2: int, num3: int = None, num4: int = None, num5: int = None):
@@ -117,6 +126,7 @@ async def math_add(interaction: discord.Interaction, num1: int, num2: int, num3:
     numbers_str = " + ".join(map(str, numbers))
     await interaction.response.send_message(f"{numbers_str} = {total}")
 
+#ひき算
 @math_commands.command(name="sub", description="ひき算")
 @app_commands.describe(num1="第一項", num2="第二項", num3="第三項（任意）", num4="第四項（任意）", num5="第五項（任意）")
 async def math_sub(interaction: discord.Interaction, num1: int, num2: int, num3: int = None, num4: int = None, num5: int = None):
@@ -125,6 +135,7 @@ async def math_sub(interaction: discord.Interaction, num1: int, num2: int, num3:
     numbers_str = " - ".join(map(str, [num1] + [num2, num3, num4, num5]))
     await interaction.response.send_message(f"{numbers_str} = {result}")
 
+#かけ算
 @math_commands.command(name="mul", description="かけ算")
 @app_commands.describe(num1="第一項", num2="第二項", num3="第三項（任意）", num4="第四項（任意）", num5="第五項（任意）")
 async def math_mul(interaction: discord.Interaction, num1: int, num2: int, num3: int = None, num4: int = None, num5: int = None):
@@ -133,6 +144,7 @@ async def math_mul(interaction: discord.Interaction, num1: int, num2: int, num3:
     numbers_str = " * ".join(map(str, numbers))
     await interaction.response.send_message(f"{numbers_str} = {result}")
 
+#わり算
 @math_commands.command(name="div", description="わり算")
 @app_commands.describe(num1="被除数", num2="除数", num3="除数（任意）", num4="除数（任意）", num5="除数（任意）")
 async def math_div(interaction: discord.Interaction, num1: int, num2: int, num3: int = None, num4: int = None, num5: int = None):
@@ -145,6 +157,7 @@ async def math_div(interaction: discord.Interaction, num1: int, num2: int, num3:
         result /= num
     await interaction.response.send_message(f"{' / '.join(map(str, numbers))} = {result}")
 
+#剰余
 @math_commands.command(name="mod", description="剰余")
 @app_commands.describe(x="被除数", y="除数", x3="除数（任意）", x4="除数（任意）", x5="除数（任意）")
 async def math_mod(interaction: discord.Interaction, x: int, y: int, x3: int = None, x4: int = None, x5: int = None):
@@ -158,7 +171,8 @@ async def math_mod(interaction: discord.Interaction, x: int, y: int, x3: int = N
     numbers_str = " % ".join(map(str, numbers))
     await interaction.response.send_message(f"{numbers_str} = {result}")
 
-@math_commands.command(name="exp", description="累乗")
+#指数
+@math_commands.command(name="exp", description="指数")
 @app_commands.describe(mode="基数の種類（自然対数の底、または他の実数）", exponent="指数", base="基数（他の実数の場合）")
 @app_commands.choices(mode=[
     app_commands.Choice(name='自然対数の底 e', value='e'),
@@ -177,6 +191,7 @@ async def math_exp(interaction: discord.Interaction, mode: str, exponent: int, b
         return
     await interaction.response.send_message(f"{base if mode == 'other' else 'e'} ^ {exponent} = {result}")
 
+#対数
 @math_commands.command(name="log", description="対数")
 @app_commands.describe(mode="対数の種類（自然対数、常用対数、二進対数）", value="対数を取る値")
 @app_commands.choices(mode=[
@@ -196,6 +211,7 @@ async def math_log(interaction: discord.Interaction, mode: str, value: float):
         return
     await interaction.response.send_message(f"{mode}({value}) = {result}")
 
+#平方根と累乗根
 @math_commands.command(name="root", description="平方根または累乗根")
 @app_commands.describe(mode="計算モード（平方根または累乗根）", value="根を取る値", radical="累乗根の次数")
 @app_commands.choices(mode=[
@@ -214,6 +230,7 @@ async def math_root(interaction: discord.Interaction, mode: str, value: float, r
         await interaction.response.send_message("無効なモードが指定されました。")
     await interaction.response.send_message(f"{value} の {radical} 乗根 = {result}")
 
+#sin
 @math_commands.command(name="sin", description="正弦(sin)・逆正弦(arcsin)")
 @app_commands.describe(mode="モード（sin or arcsin）", value="角度（度数法）または値")
 @app_commands.choices(mode=[
@@ -229,6 +246,7 @@ async def math_sin(interaction: discord.Interaction, mode: str, value: float):
         await interaction.response.send_message("無効なモードが指定されました。")
     await interaction.response.send_message(f"{mode}({value}) = {result}")
 
+#cos
 @math_commands.command(name="cos", description="余弦(cos)・逆余弦(arccos)")
 @app_commands.describe(mode="モード（cos or arccos）", value="角度（度数法）または値")
 @app_commands.choices(mode=[
@@ -244,6 +262,7 @@ async def math_cos(interaction: discord.Interaction, mode: str, value: float):
         await interaction.response.send_message("無効なモードが指定されました。")
     await interaction.response.send_message(f"{mode}({value}) = {result}")
 
+#tan
 @math_commands.command(name="tan", description="正接(tan)・逆正接(arctan)")
 @app_commands.describe(mode="モード（tan or arctan）", value="角度（度数法）または値")
 @app_commands.choices(mode=[
@@ -259,6 +278,7 @@ async def math_tan(interaction: discord.Interaction, mode: str, value: float):
         await interaction.response.send_message("無効なモードが指定されました。")
     await interaction.response.send_message(f"{mode}({value}) = {result}")
 
+#数列
 @math_commands.command(name="sigma", description="数列Σの計算")
 @app_commands.describe(k="シグマの下限値", n="シグマの上限値", sequence="計算する数列の式（'k'を変数として使用）例:k、k*k、k+3など")
 async def math_sigma(interaction: discord.Interaction, k: int, n: int, sequence: str):
@@ -276,7 +296,7 @@ bot.tree.add_command(math_commands)
 pollコマンド
 ********************************************************************************
 """
-#embed
+#embed作成
 def create_poll_embed(poll, author, end_time):
     embed = discord.Embed(title=poll['title'], description=poll['description'], color=0x00ff4c, timestamp=datetime.now())
     embed.set_footer(text=f"作成者: {author.display_name}", icon_url=author.avatar.url if author.avatar else None)
@@ -285,6 +305,7 @@ def create_poll_embed(poll, author, end_time):
     for choice, voters in zip(poll['choices'], poll['votes']):
         embed.add_field(name=choice, value="\n".join(voters) if voters else "まだ投票がありません", inline=True)
     return embed
+
 #投票ボタン
 class PollButton(discord.ui.Button):
     def __init__(self, label, poll_id, choice_index, is_end_button=False):
@@ -309,7 +330,8 @@ class PollButton(discord.ui.Button):
             for item in self.view.children:
                 item.disabled = True
             await interaction.response.edit_message(embed=embed, view=self.view)
-#最終結果
+
+#投票インタラクションビュー
 class PollView(discord.ui.View):
     def __init__(self, poll_id, end_time):
         super().__init__()
@@ -320,6 +342,7 @@ class PollView(discord.ui.View):
             self.add_item(PollButton(label=choice, poll_id=poll_id, choice_index=i))
         end_button = PollButton(label="終了", poll_id=poll_id, choice_index=-1, is_end_button=True)
         self.add_item(end_button)
+
 #コマンド
 @bot.tree.command(name='poll', description='投票を作成する')
 @app_commands.describe(
@@ -353,7 +376,7 @@ polls = []
 挙手コマンド
 ********************************************************************************
 """
-#クラスとグローバル変数
+#状態管理（確定・仮・補欠）
 class Recruitment:
     def __init__(self):
         self.confirmed = set()
@@ -375,6 +398,7 @@ class Recruitment:
             self.standby.add(member)
 recruitment_status = {}
 
+#挙手ボタン
 class RecruitmentButton(discord.ui.Button):
     def __init__(self, label, custom_id):
         super().__init__(style=discord.ButtonStyle.primary, label=label, custom_id=custom_id)
@@ -396,51 +420,47 @@ class RecruitmentButton(discord.ui.Button):
         last_message = await get_last_message(interaction.channel)
         await update_recruitment_message(interaction.channel, target_member=user, action=action)
 
+#募集状況メッセージの更新
 async def update_recruitment_message(channel, target_member=None, action='', times=None):
     global recruitment_status
     embed = discord.Embed(title="募集状況", description="", color=0x00ff4c, timestamp=datetime.now())
     view = discord.ui.View()
     sorted_times = sorted(recruitment_status.keys(), key=lambda x: int(x))
-
     for time in sorted_times:
         recruitment = recruitment_status[time]
         confirmed_count = len(recruitment.confirmed)
         total_members = len(recruitment.confirmed) + len(recruitment.tentative) + len(recruitment.standby)
-
-        # 確定メンバーが6人以下の場合は6人、7人以上の場合は12人の募集人数
         max_members = 12 if confirmed_count >= 7 else 6
         remaining_slots = max(0, max_members - confirmed_count)
         remaining_including_tentative = max(0, max_members - total_members)
-
         confirmed_members = ">>> 確定：" + " ".join([f"<@{member.id}>" for member in recruitment.confirmed]) or "なし"
         tentative_members = "仮：" + " ".join([f"<@{member.id}>" for member in recruitment.tentative]) or "なし"
         standby_members = "補欠：" + " ".join([f"<@{member.id}>" for member in recruitment.standby]) or "なし"
-
         if max_members == 6:
             remaining_text = f"@{remaining_slots}"
         else:
             remaining_text_6 = max(0, 6 - confirmed_count)
             remaining_text = f"@{remaining_text_6}/@{remaining_slots}"
-
         if total_members > confirmed_count:
             remaining_text += f" ({remaining_including_tentative})"
-
         embed.add_field(name=f"__{time}時 {remaining_text}__", value=f"{confirmed_members}\n{tentative_members}\n{standby_members}", inline=False)
         view.add_item(RecruitmentButton(label=time, custom_id=f"recruit_{time}"))
-
     async for message in channel.history(limit=10):
         if message.embeds and message.author.id == bot.user.id:
             await message.delete()
             break
     await channel.send(embed=embed, view=view)
 
+#チャンネルの最新メッセージ取得
 async def get_last_message(channel):
     async for message in channel.history(limit=1):
         return message
     return None
 
+#コマンド
+
 #can
-@bot.tree.command(name='can', description='メンバーを募集or挙手をする')
+@bot.tree.command(name='can', description='挙手をする、timeは半角スペースで区切ることで複数の時間の挙手が可能')
 @app_commands.choices(type=[
     app_commands.Choice(name='確定', value='c'),
     app_commands.Choice(name='仮', value='r'),
@@ -459,6 +479,7 @@ async def can(interaction: discord.Interaction, time: str, type: str = 'c', memb
     await interaction.response.defer(ephemeral=True)
     await interaction.followup.send(f"<@{target_member.id}>が{times_str}時に挙手しました。", ephemeral=True)
     await update_recruitment_message(interaction.channel, target_member=target_member, action='挙手', times=times_str)
+
 #drop
 @bot.tree.command(name='drop', description='挙手を取り下げる')
 async def drop(interaction: discord.Interaction, time: str, member: discord.Member = None):
@@ -473,16 +494,17 @@ async def drop(interaction: discord.Interaction, time: str, member: discord.Memb
     await interaction.response.defer(ephemeral=True)
     await interaction.followup.send(f"<@{target_member.id}>が{times_str}時の挙手を取り下げました。", ephemeral=True)
     await update_recruitment_message(interaction.channel, target_member=target_member, action='挙手取り下げ', times=times_str)
+
 #now
 @bot.tree.command(name='now', description='現在の募集状況を表示する')
 async def now(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True)
-    # 現在の募集状況が空かどうかチェック
     if not recruitment_status:
         await interaction.followup.send("現在の募集はありません。", ephemeral=False)
     else:
         await interaction.followup.send("現在の募集状況を表示", ephemeral=True)
         await update_recruitment_message(interaction.channel)
+
 #clear
 @bot.tree.command(name='clear', description='募集状況をリセットする')
 async def clear(interaction: discord.Interaction):
@@ -490,8 +512,12 @@ async def clear(interaction: discord.Interaction):
     recruitment_status.clear()
     await interaction.response.send_message("募集状況をリセットしました。", ephemeral=False)
 
-
-#statsbotのcalcコマンドフォーマット変換
+"""
+********************************************************************************
+nanka
+********************************************************************************
+"""
+#statsbotのcalcコマンドフォーマット変換 没
 @bot.tree.command(name='convert-calc', description='Convert to calc command format')
 @app_commands.describe(
     format="ゲームの形式を選択",
@@ -515,6 +541,7 @@ async def convert_calc(interaction: discord.Interaction, format: str, team1: str
     player_names = ', '.join([name for team in teams for name in team.split(', ')])
     command_str = f'^calc {format}, ' + player_names
     await interaction.response.send_message(command_str)
+
 
 
 """
