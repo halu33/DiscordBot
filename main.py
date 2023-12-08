@@ -45,7 +45,7 @@ tree = bot.tree
 """
 #テストコマンド
 @tree.command(name='test', description="テストコマンド")
-@app_commands.describe(str="文字をここに打てよー")
+@app_commands.describe(str="文字をここに打てよ")
 async def test(interaction: discord.Interaction, str: str = None):
     if str:
         message = f"yo! {str}"
@@ -63,6 +63,26 @@ async def hello(interaction: discord.Interaction):
 @tree.command(name='invite', description="botの招待リンク")
 async def hello(interaction: discord.Interaction):
     await interaction.response.send_message(f'botの招待リンク:{INVITE}')
+
+#bot開発用
+@tree.command(name='develop', description="discord developerとかdiscord.pyの公式ドキュメントとかgithubとかherokuとか諸々のURL")
+async def develop(interaction: discord.Interaction):
+    embed = discord.Embed(
+        title="開発者用",
+        description="いろんなURL",
+        color=0x00ff4c
+    )
+    embed.add_field(name="__** Discord Developer Portal **__", value="https://discord.com/developers/applications", inline=False)
+    embed.add_field(name="__** Discord.py 公式ドキュメント **__", value="https://discordpy.readthedocs.io/ja/latest/", inline=False)
+    embed.add_field(name="__** このbotのリポジトリ **__", value="https://github.com/halu33/DiscordBot", inline=False)
+    embed.add_field(name="__** heroku **__", value="https://dashboard.heroku.com/apps", inline=False)
+    embed.add_field(name="__** embed builder **__", value="https://autocode.com/tools/discord/embed-builder/", inline=False)
+    embed.add_field(name="__** Discord 文字装飾 **__", value="https://qiita.com/xero/items/6026ed007d5d34623a50", inline=False)
+    embed.add_field(name="__** unixタイムスタンプ **__", value="https://hammertime.cyou/ja", inline=False)
+    embed.add_field(name="__** 参考サイト **__", value=">>> bot作成 : https://zenn.dev/king/articles/4201f4ee821a27\nスラッシュコマンド実装 : https://zenn.dev/952490802574164/articles/b8b0232b29e79b", inline=False)
+    embed.set_footer(text="@HALU_33", icon_url="https://halu33.net/img/epril_icon.png")
+    await interaction.response.send_message(embed=embed)
+
 
 """
 ********************************************************************************
