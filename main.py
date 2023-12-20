@@ -1,9 +1,14 @@
 #ライブラリ
+from typing import Optional, Union
 import discord
+from discord.emoji import Emoji
+from discord.enums import ButtonStyle
 from discord.ext import commands
 from discord import app_commands
+from discord.partial_emoji import PartialEmoji
 from discord.ui import Button, View
 import math as math_module
+import random
 import logging
 import time
 from datetime import datetime, timedelta
@@ -38,6 +43,7 @@ bot = commands.Bot(command_prefix="?", intents=intents, case_insensitive=True, h
 tree = bot.tree
 
 
+
 """
 ********************************************************************************
 コマンド処理
@@ -45,7 +51,7 @@ tree = bot.tree
 """
 #テストコマンド
 @tree.command(name='test', description="テストコマンド")
-@app_commands.describe(str="文字をここに打てよ")
+@app_commands.describe(str="文字をここに打てよ。。。。")
 async def test(interaction: discord.Interaction, str: str = None):
     if str:
         message = f"yo! {str}"
@@ -333,23 +339,33 @@ class PollButton(discord.ui.Button):
         self.poll_id = poll_id
         self.choice_index = choice_index
         self.is_end_button = is_end_button
+
     async def callback(self, interaction: discord.Interaction):
         global polls
         poll = polls[self.poll_id]
         user = interaction.user.display_name
+        #即時応答を送信
+        await interaction.response.defer(ephemeral=True)
+        await interaction.followup.send("処理中...", ephemeral=True)
         if not self.is_end_button:
+            #投票処理
             if not poll['allow_duplicate']:
                 for vote_set in poll['votes']:
                     vote_set.discard(user)
             poll['votes'][self.choice_index].add(user)
-            await interaction.response.edit_message(embed=create_poll_embed(poll, interaction.user, poll['end_time']), view=PollView(self.poll_id, poll['end_time']))
+            new_embed = create_poll_embed(poll, interaction.user, poll['end_time'])
+            new_view = PollView(self.poll_id, poll['end_time'])
+            await interaction.followup.send(embed=new_embed, view=new_view)
+            await interaction.message.delete()
         else:
+            #投票終了処理
             embed = create_poll_embed(poll, interaction.user, poll['end_time'])
             embed.title = f"投票が終了しました: {poll['title']}"
             embed.description = f"結果が確定しました。: {poll['description']}"
             for item in self.view.children:
                 item.disabled = True
-            await interaction.response.edit_message(embed=embed, view=self.view)
+            await interaction.followup.send(embed=embed, view=self.view)
+        await interaction.message.delete()
 
 #投票インタラクションビュー
 class PollView(discord.ui.View):
@@ -402,6 +418,7 @@ class Recruitment:
         self.confirmed = set()
         self.tentative = set()
         self.standby = set()
+
     def update_member_status(self, member, new_status):
         if new_status != 'c':
             self.confirmed.discard(member)
@@ -416,19 +433,25 @@ class Recruitment:
             self.tentative.add(member)
         elif new_status == 's':
             self.standby.add(member)
+
 recruitment_status = {}
 
 #挙手ボタン
 class RecruitmentButton(discord.ui.Button):
     def __init__(self, label, custom_id):
         super().__init__(style=discord.ButtonStyle.primary, label=label, custom_id=custom_id)
+
     async def callback(self, interaction: discord.Interaction):
         global recruitment_status
         time = self.label
         user = interaction.user
+
+        await interaction.response.defer(ephemeral=True)
+
         if time not in recruitment_status:
             recruitment_status[time] = Recruitment()
         recruitment = recruitment_status[time]
+
         if user in recruitment.confirmed or user in recruitment.tentative or user in recruitment.standby:
             recruitment.confirmed.discard(user)
             recruitment.tentative.discard(user)
@@ -437,8 +460,8 @@ class RecruitmentButton(discord.ui.Button):
         else:
             recruitment.confirmed.add(user)
             action = '挙手'
-        last_message = await get_last_message(interaction.channel)
-        await update_recruitment_message(interaction.channel, target_member=user, action=action)
+
+        await update_recruitment_message(interaction.channel)
 
 #募集状況メッセージの更新
 async def update_recruitment_message(channel, target_member=None, action='', times=None):
@@ -471,16 +494,31 @@ async def update_recruitment_message(channel, target_member=None, action='', tim
             break
     await channel.send(embed=embed, view=view)
 
-#チャンネルの最新メッセージ取得
+
+#最後のメッセージ取得
 async def get_last_message(channel):
     async for message in channel.history(limit=1):
         return message
     return None
 
+#ロール作成
+async def create_role_for_time(guild, time):
+    """ 指定された時間に対応するロールを作成 """
+    role_name = str(time)
+    return await guild.create_role(name=role_name)
+
+#ロール削除
+async def delete_role_for_time(guild, time):
+    """ 指定された時間のロールを削除 """
+    role_name = str(time)
+    role = discord.utils.get(guild.roles, name=role_name)
+    if role:
+        await role.delete()
+
 #コマンド
 
 #can
-@bot.tree.command(name='can', description='挙手をする、timeは半角スペースで区切ることで複数の時間の挙手が可能')
+@bot.tree.command(name='can', description='メンバーを募集or挙手をする')
 @app_commands.choices(type=[
     app_commands.Choice(name='確定', value='c'),
     app_commands.Choice(name='仮', value='r'),
@@ -491,14 +529,15 @@ async def can(interaction: discord.Interaction, time: str, type: str = 'c', memb
     new_times = time.split()
     sorted_times = sorted(set(new_times), key=lambda x: int(x))
     times_str = " ".join(sorted_times)
-    last_message = await get_last_message(interaction.channel)
     for t in sorted_times:
         if t not in recruitment_status:
             recruitment_status[t] = Recruitment()
         recruitment_status[t].update_member_status(target_member, type)
+        role = await create_role_for_time(interaction.guild, t)
+        await target_member.add_roles(role)
+    await update_recruitment_message(interaction.channel)
     await interaction.response.defer(ephemeral=True)
     await interaction.followup.send(f"<@{target_member.id}>が{times_str}時に挙手しました。", ephemeral=True)
-    await update_recruitment_message(interaction.channel, target_member=target_member, action='挙手', times=times_str)
 
 #drop
 @bot.tree.command(name='drop', description='挙手を取り下げる')
@@ -507,13 +546,16 @@ async def drop(interaction: discord.Interaction, time: str, member: discord.Memb
     new_times = time.split()
     sorted_times = sorted(set(new_times), key=lambda x: int(x))
     times_str = " ".join(sorted_times)
-    last_message = await get_last_message(interaction.channel)
     for t in sorted_times:
         if t in recruitment_status:
             recruitment_status[t].update_member_status(target_member, 'drop')
+            role_name = str(t)
+            role = discord.utils.get(interaction.guild.roles, name=role_name)
+            if role:
+                await target_member.remove_roles(role)
+    await update_recruitment_message(interaction.channel)
     await interaction.response.defer(ephemeral=True)
     await interaction.followup.send(f"<@{target_member.id}>が{times_str}時の挙手を取り下げました。", ephemeral=True)
-    await update_recruitment_message(interaction.channel, target_member=target_member, action='挙手取り下げ', times=times_str)
 
 #now
 @bot.tree.command(name='now', description='現在の募集状況を表示する')
@@ -529,12 +571,58 @@ async def now(interaction: discord.Interaction):
 @bot.tree.command(name='clear', description='募集状況をリセットする')
 async def clear(interaction: discord.Interaction):
     global recruitment_status
+    for time in recruitment_status.keys():
+        role_name = str(time)
+        role = discord.utils.get(interaction.guild.roles, name=role_name)
+        if role:
+            await role.delete()
     recruitment_status.clear()
     await interaction.response.send_message("募集状況をリセットしました。", ephemeral=False)
 
+
 """
 ********************************************************************************
-nanka
+対話しようぜ
+********************************************************************************
+"""
+#対話モードの状態を管理
+chat_mode_active = False
+
+#chat playコマンド
+@bot.tree.command(name='chat', description='対話モードの開始・終了')
+@app_commands.describe(mode='play または end')
+@app_commands.choices(mode=[
+    app_commands.Choice(name='play', value='play'),
+    app_commands.Choice(name='end', value='end')
+])
+async def chat(interaction: discord.Interaction, mode: str):
+    global chat_mode_active
+    if mode == 'play':
+        chat_mode_active = True
+        await interaction.response.send_message(f"よおお社不ども")
+    elif mode == 'end':
+        chat_mode_active = False
+        await interaction.response.send_message("ばいばーい！！カス！！！！")
+    else:
+        await interaction.response.send_message("そんなコマンドないよwwwwwwwwwwwwwwww")
+
+#メッセージ応答
+@bot.event
+async def on_message(message):
+    global chat_mode_active
+
+    if chat_mode_active and not message.author.bot:
+        #chat_res.txtから応答内容を読み込む
+        with open('chat_res.txt', 'r', encoding='utf-8') as file:
+            responses = file.readlines()
+            response = random.choice(responses).strip()
+
+        await message.channel.send(response)
+
+
+"""
+********************************************************************************
+没コマンド
 ********************************************************************************
 """
 #statsbotのcalcコマンドフォーマット変換 没
