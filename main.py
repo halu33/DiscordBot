@@ -51,7 +51,7 @@ tree = bot.tree
 """
 #テストコマンド
 @tree.command(name='test', description="テストコマンド")
-@app_commands.describe(str="文字をここに打てよ。。。。")
+@app_commands.describe(str="文字をここに打てよ")
 async def test(interaction: discord.Interaction, str: str = None):
     if str:
         message = f"yo! {str}"
@@ -585,10 +585,11 @@ async def clear(interaction: discord.Interaction):
 対話しようぜ
 ********************************************************************************
 """
-#対話モードの状態を管理
+#初期状態 False
+learning_mode_active = False
 chat_mode_active = False
 
-#chat playコマンド
+#コマンド処理
 @bot.tree.command(name='chat', description='対話モードの開始・終了')
 @app_commands.describe(mode='play または end')
 @app_commands.choices(mode=[
@@ -606,18 +607,50 @@ async def chat(interaction: discord.Interaction, mode: str):
     else:
         await interaction.response.send_message("そんなコマンドないよwwwwwwwwwwwwwwww")
 
-#メッセージ応答
+@bot.tree.command(name='learning', description='学習モードの開始・終了・学習内容の表示')
+@app_commands.describe(mode='start, end, list')
+@app_commands.choices(mode=[
+    app_commands.Choice(name='start', value='start'),
+    app_commands.Choice(name='end', value='end'),
+    app_commands.Choice(name='list', value='list')
+])
+async def learning(interaction: discord.Interaction, mode: str):
+    global learning_mode_active
+    if mode == 'start':
+        learning_mode_active = True
+        await interaction.response.send_message("勉強タイム開始")
+    elif mode == 'end':
+        learning_mode_active = False
+        await interaction.response.send_message("勉強タイム終了")
+    elif mode == 'list':
+        #chat_res.txtの内容を表示
+        with open('chat_res.txt', 'r', encoding='utf-8') as file:
+            responses = [line.strip() for line in file.readlines() if line.strip()]
+            responses_str = "\n".join(responses)
+        await interaction.response.send_message(f"現在の学習内容:\n{responses_str}")
+    else:
+        await interaction.response.send_message("無効なモードです。")
+
+#メッセージ応答と学習
 @bot.event
 async def on_message(message):
-    global chat_mode_active
-
-    if chat_mode_active and not message.author.bot:
-        #chat_res.txtから応答内容を読み込む
+    global chat_mode_active, learning_mode_active
+    if message.author.bot:
+        return
+    if chat_mode_active:
+        # hat_res.txtから応答内容を読み込む処理
         with open('chat_res.txt', 'r', encoding='utf-8') as file:
-            responses = file.readlines()
-            response = random.choice(responses).strip()
-
+            responses = [line.strip() for line in file.readlines() if line.strip()]
+            response = random.choice(responses)
         await message.channel.send(response)
+    if learning_mode_active:
+        #chat_res.txtにメッセージを追加する処理
+        with open('chat_res.txt', 'a', encoding='utf-8') as file:
+            file.write(message.content + '\n')
+        #リアクション
+        await message.add_reaction('✅')
+
+    await bot.process_commands(message)
 
 
 """
