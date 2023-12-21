@@ -654,7 +654,7 @@ async def learning(interaction: discord.Interaction, mode: str, index: int = Non
         with open('chat_res.txt', 'r', encoding='utf-8') as file:
             responses = [line.strip() for line in file.readlines() if line.strip()]
             responses_str = "\n".join(responses)
-        await interaction.response.send_message(f"現在の学習内容:\n{responses_str}")
+        await interaction.response.send_message(f"__**現在の学習内容:**__\n{responses_str}")
     elif mode == 'edit':
         if index is not None and new_text is not None:
             edit_learning_content(index, new_text)
