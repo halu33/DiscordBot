@@ -51,7 +51,7 @@ tree = bot.tree
 """
 #テストコマンド
 @tree.command(name='test', description="テストコマンド")
-@app_commands.describe(str="文字をここに打てよ")
+@app_commands.describe(str="文字をここに打てよなーー")
 async def test(interaction: discord.Interaction, str: str = None):
     if str:
         message = f"yo! {str}"
@@ -589,6 +589,31 @@ async def clear(interaction: discord.Interaction):
 learning_mode_active = False
 chat_mode_active = False
 
+#指定されたインデックスの行を編集
+def edit_learning_content(index, new_text):
+    with open('chat_res.txt', 'r', encoding='utf-8') as file:
+        lines = file.readlines()
+
+    if 1 <= index <= len(lines):
+        lines[index - 1] = f"{index}:{new_text}\n"
+
+    with open('chat_res.txt', 'w', encoding='utf-8') as file:
+        file.writelines(lines)
+
+#指定されたインデックスの行を削除
+def delete_learning_content(index):
+    with open('chat_res.txt', 'r', encoding='utf-8') as file:
+        lines = file.readlines()
+
+    if 1 <= index <= len(lines):
+        lines.pop(index - 1)
+
+    # 新しいインデックスを更新
+    lines = [f"{i+1}:{line.split(':', 1)[1]}" for i, line in enumerate(lines)]
+
+    with open('chat_res.txt', 'w', encoding='utf-8') as file:
+        file.writelines(lines)
+
 #コマンド処理
 @bot.tree.command(name='chat', description='対話モードの開始・終了')
 @app_commands.describe(mode='play または end')
@@ -608,13 +633,15 @@ async def chat(interaction: discord.Interaction, mode: str):
         await interaction.response.send_message("そんなコマンドないよwwwwwwwwwwwwwwww")
 
 @bot.tree.command(name='learning', description='学習モードの開始・終了・学習内容の表示')
-@app_commands.describe(mode='start, end, list')
+@app_commands.describe(mode='start, end, list, edit, delete', index='編集または削除する行の番号', new_text='編集する新しいテキスト')
 @app_commands.choices(mode=[
     app_commands.Choice(name='start', value='start'),
     app_commands.Choice(name='end', value='end'),
-    app_commands.Choice(name='list', value='list')
+    app_commands.Choice(name='list', value='list'),
+    app_commands.Choice(name='edit', value='edit'),
+    app_commands.Choice(name='delete', value='delete')
 ])
-async def learning(interaction: discord.Interaction, mode: str):
+async def learning(interaction: discord.Interaction, mode: str, index: int = None, new_text: str = None):
     global learning_mode_active
     if mode == 'start':
         learning_mode_active = True
@@ -628,8 +655,21 @@ async def learning(interaction: discord.Interaction, mode: str):
             responses = [line.strip() for line in file.readlines() if line.strip()]
             responses_str = "\n".join(responses)
         await interaction.response.send_message(f"現在の学習内容:\n{responses_str}")
+    elif mode == 'edit':
+        if index is not None and new_text is not None:
+            edit_learning_content(index, new_text)
+            await interaction.response.send_message(f"{index}番の記憶を改変したぜ")
+        else:
+            await interaction.response.send_message("は？？？？？どれだよwwwwwwwwwwww")
+    elif mode == 'delete':
+        if index is not None:
+            delete_learning_content(index)
+            await interaction.response.send_message(f"{index}番の記憶をなかったことにしたぜ")
+        else:
+            await interaction.response.send_message("は？？？？？どれだよwwwwwwwwwwww")
     else:
-        await interaction.response.send_message("無効なモードです。")
+        await interaction.response.send_message("そんなコマンドないよwwwwwwwwwwwwwwww")
+
 
 #メッセージ応答と学習
 @bot.event
@@ -638,18 +678,20 @@ async def on_message(message):
     if message.author.bot:
         return
     if chat_mode_active:
-        # hat_res.txtから応答内容を読み込む処理
+        #chat_res.txtから応答内容を読み込む処理
         with open('chat_res.txt', 'r', encoding='utf-8') as file:
-            responses = [line.strip() for line in file.readlines() if line.strip()]
+            responses = [line.split(":", 1)[1].strip() for line in file.readlines() if line.strip()]
             response = random.choice(responses)
         await message.channel.send(response)
     if learning_mode_active:
+        with open('chat_res.txt', 'r', encoding='utf-8') as file:
+            current_lines = file.readlines()
+            next_index = len(current_lines) + 1
         #chat_res.txtにメッセージを追加する処理
         with open('chat_res.txt', 'a', encoding='utf-8') as file:
-            file.write(message.content + '\n')
-        #リアクション
+            file.write(f"{next_index}:{message.content}\n")
+        # リアクション
         await message.add_reaction('✅')
-
     await bot.process_commands(message)
 
 
