@@ -51,7 +51,7 @@ tree = bot.tree
 """
 #テストコマンド
 @tree.command(name='test', description="テストコマンド")
-@app_commands.describe(str="文字をここに打てよなーー")
+@app_commands.describe(str="文字をここに打てよな")
 async def test(interaction: discord.Interaction, str: str = None):
     if str:
         message = f"yo! {str}"
@@ -740,6 +740,35 @@ async def on_ready():
     await tree.sync()
     await tree.sync(guild=discord.Object(id=GUILD_ID))
 
+README_CHANNEL_ID = os.getenv('README_CHANNEL_ID')
+MEMBER_ROLE_ID = os.getenv('MEMBER_ROLE_ID')
+TEMP_ROLE_ID = os.getenv('TEMP_ROLE_ID')
+INFO_CHANNEL_ID = os.getenv('INFO_CHANNEL_ID')
+
+@bot.command(name='setup', help='READMEチャンネルにメッセージを設定します。')
+@commands.has_permissions(administrator=True)
+async def setup_readme_channel(ctx):
+    channel = bot.get_channel(int(README_CHANNEL_ID))
+    embed = discord.Embed(title="README", description=f"**<#{INFO_CHANNEL_ID}>チャンネルのルールを読んだら、このメッセージにリアクションしてください。**", color=0x00ff4c)
+    embed.set_footer(text="@HALU_33", icon_url="https://halu33.net/img/epril_icon.png")
+    message = await channel.send(embed=embed)
+    await message.add_reaction('✅')  # チェックマークのリアクションを追加
+
+@bot.event
+async def on_raw_reaction_add(payload):
+    try:
+        if payload.channel_id == int(README_CHANNEL_ID) and str(payload.emoji) == '✅':
+            guild = bot.get_guild(int(GUILD_ID))
+            member = guild.get_member(payload.user_id)
+
+            if TEMP_ROLE_ID in [role.id for role in member.roles]:  # ユーザーがtempロールを持っているか確認
+                temp_role = guild.get_role(int(TEMP_ROLE_ID))
+                member_role = guild.get_role(int(MEMBER_ROLE_ID))  # 既存のメンバーロールを取得
+
+                await member.remove_roles(temp_role)  # tempロールを削除
+                await member.add_roles(member_role)  # メンバーロールを付与
+    except Exception as e:
+        print(f'エラーが発生しました: {e}')
 
 """
 ********************************************************************************
