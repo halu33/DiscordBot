@@ -51,7 +51,7 @@ tree = bot.tree
 """
 #テストコマンド
 @tree.command(name='test', description="テストコマンド")
-@app_commands.describe(str="文字をここに打てよな")
+@app_commands.describe(str="文字をここに打てよなー")
 async def test(interaction: discord.Interaction, str: str = None):
     if str:
         message = f"yo! {str}"
@@ -588,27 +588,37 @@ async def clear(interaction: discord.Interaction):
 #初期状態 False
 learning_mode_active = False
 chat_mode_active = False
+active_chat_channel_id = None
+active_learning_channel_id = None
 
-#指定されたインデックスの行を編集
+#指定したインデックスの行を編集
 def edit_learning_content(index, new_text):
-    with open('chat_res.txt', 'r', encoding='utf-8') as file:
-        lines = file.readlines()
-    if 1 <= index <= len(lines):
-        lines[index - 1] = f"{index}:{new_text}\n"
-    with open('chat_res.txt', 'w', encoding='utf-8') as file:
-        file.writelines(lines)
+    try:
+        with open('chat_res.txt', 'r', encoding='utf-8') as file:
+            lines = file.readlines()
+        if 1 <= index <= len(lines):
+            lines[index - 1] = f"{index}:{new_text}\n"
+        with open('chat_res.txt', 'w', encoding='utf-8') as file:
+            file.writelines(lines)
+        print(f"インデックス{index}の内容を'{new_text}'に編集しました。")
+    except Exception as e:
+        print(f"編集中にエラーが発生しました: {e}")
 
-#指定されたインデックスの行を削除
+#指定したインデックスの行を削除
 def delete_learning_content(index):
-    with open('chat_res.txt', 'r', encoding='utf-8') as file:
-        lines = file.readlines()
-    if 1 <= index <= len(lines):
-        lines.pop(index - 1)
-    # 新しいインデックスを更新
-    lines = [f"{i+1}:{line.split(':', 1)[1]}" for i, line in enumerate(lines)]
-    with open('chat_res.txt', 'w', encoding='utf-8') as file:
-        file.writelines(lines)
+    try:
+        with open('chat_res.txt', 'r', encoding='utf-8') as file:
+            lines = file.readlines()
+        if 1 <= index <= len(lines):
+            lines.pop(index - 1)
+        lines = [f"{i+1}:{line.split(':', 1)[1]}" for i, line in enumerate(lines)]
+        with open('chat_res.txt', 'w', encoding='utf-8') as file:
+            file.writelines(lines)
+        print(f"インデックス{index}の内容を削除しました。")
+    except Exception as e:
+        print(f"削除中にエラーが発生しました: {e}")
 
+#コマンド
 @bot.tree.command(name='chat', description='対話モードの開始・終了')
 @app_commands.describe(mode='play または end')
 @app_commands.choices(mode=[
@@ -616,15 +626,16 @@ def delete_learning_content(index):
     app_commands.Choice(name='end', value='end')
 ])
 async def chat(interaction: discord.Interaction, mode: str):
-    global chat_mode_active
+    global chat_mode_active, active_chat_channel_id
     if mode == 'play':
         chat_mode_active = True
-        await interaction.response.send_message("対話モードを開始します。")
+        active_chat_channel_id = interaction.channel_id
+        await interaction.response.send_message("よおお社不ども")
     elif mode == 'end':
         chat_mode_active = False
-        await interaction.response.send_message("対話モードを終了します。")
+        await interaction.response.send_message("ばいばーい！！カス！！！")
     else:
-        await interaction.response.send_message("無効なコマンドです。")
+        await interaction.response.send_message("そんなコマンドないよwwwwwwwwwwwwwwww")
 
 @bot.tree.command(name='learning', description='学習モードの開始・終了・学習内容の表示')
 @app_commands.describe(mode='start, end, list, edit, delete', index='編集または削除する行の番号', new_text='編集する新しいテキスト')
@@ -636,18 +647,23 @@ async def chat(interaction: discord.Interaction, mode: str):
     app_commands.Choice(name='delete', value='delete')
 ])
 async def learning(interaction: discord.Interaction, mode: str, index: int = None, new_text: str = None):
-    global learning_mode_active
+    global learning_mode_active, active_learning_channel_id
     if mode == 'start':
         learning_mode_active = True
+        active_learning_channel_id = interaction.channel_id
         await interaction.response.send_message("勉強タイム開始")
     elif mode == 'end':
         learning_mode_active = False
+        active_learning_channel_id = None
         await interaction.response.send_message("勉強タイム終了")
     elif mode == 'list':
-        with open('chat_res.txt', 'r', encoding='utf-8') as file:
-            responses = [line.strip() for line in file.readlines() if line.strip()]
-            responses_str = "\n".join(responses)
-        await interaction.response.send_message(f"__**現在の学習内容:**__\n{responses_str}")
+        try:
+            with open('chat_res.txt', 'r', encoding='utf-8') as file:
+                responses = [line.strip() for line in file.readlines() if line.strip()]
+                responses_str = "\n".join(responses)
+            await interaction.response.send_message(f"__**現在の学習内容:**__\n{responses_str}")
+        except Exception as e:
+            await interaction.response.send_message(f"なんかバグったwwwwwwwww\n{e}")
     elif mode == 'edit':
         if index is not None and new_text is not None:
             edit_learning_content(index, new_text)
@@ -666,27 +682,35 @@ async def learning(interaction: discord.Interaction, mode: str, index: int = Non
 #メッセージ応答と学習
 @bot.event
 async def on_message(message):
-    global chat_mode_active, learning_mode_active
+    global chat_mode_active, learning_mode_active, active_chat_channel_id, active_learning_channel_id
     if message.author.bot:
         return
-    if learning_mode_active:
-        with open('chat_res.txt', 'r+', encoding='utf-8') as file:
-            lines = file.readlines()
-            next_index = len(lines) + 1
-            file.write(f"{next_index}:{message.content}\n")
-        await message.channel.send(message.content)
-    elif chat_mode_active:
-        with open('chat_res.txt', 'r', encoding='utf-8') as file:
-            lines = file.readlines()
-        responses = []
-        for line in lines:
-            if line.strip():
-                parts = line.split(":", 1)
-                if len(parts) > 1:
-                    responses.append(parts[1].strip())
-        if responses:
-            response = random.choice(responses)
-            await message.channel.send(response)
+    if not (message.channel.id == active_chat_channel_id or message.channel.id == active_learning_channel_id):
+        return
+    if learning_mode_active and message.channel.id == active_learning_channel_id:
+        try:
+            with open('chat_res.txt', 'r+', encoding='utf-8') as file:
+                lines = file.readlines()
+                next_index = len(lines) + 1
+                file.write(f"{next_index}:{message.content}\n")
+            await message.channel.send(message.content)
+        except Exception as e:
+            print(f"学習モードの処理中にエラーが発生しました: {e}")
+    elif chat_mode_active and message.channel.id == active_chat_channel_id:
+        try:
+            with open('chat_res.txt', 'r', encoding='utf-8') as file:
+                lines = file.readlines()
+            responses = []
+            for line in lines:
+                if line.strip():
+                    parts = line.split(":", 1)
+                    if len(parts) > 1:
+                        responses.append(parts[1].strip())
+            if responses:
+                response = random.choice(responses)
+                await message.channel.send(response)
+        except Exception as e:
+            print(f"対話モードの処理中にエラーが発生しました: {e}")
     await bot.process_commands(message)
 
 
