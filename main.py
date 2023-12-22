@@ -765,7 +765,7 @@ MEMBER_ROLE_ID = os.getenv('MEMBER_ROLE_ID')
 TEMP_ROLE_ID = os.getenv('TEMP_ROLE_ID')
 INFO_CHANNEL_ID = os.getenv('INFO_CHANNEL_ID')
 
-@bot.command(name='setup', help='READMEチャンネルにメッセージを設定します。')
+@bot.command(name='setup_temp_role', help='READMEチャンネルにメッセージを設定します。')
 @commands.has_permissions(administrator=True)
 async def setup_readme_channel(ctx):
     channel = bot.get_channel(int(README_CHANNEL_ID))
