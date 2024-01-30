@@ -15,6 +15,8 @@ from datetime import datetime, timedelta
 import os
 import asyncio
 from dotenv import load_dotenv
+import mysql.connector
+from mysql.connector import Error
 
 #help_commands.py
 from help_commands import commands_description, detailed_commands_description
@@ -591,32 +593,89 @@ chat_mode_active = False
 active_chat_channel_id = None
 active_learning_channel_id = None
 
+DB_HOST = os.getenv('DB_HOST')
+DB_USER = os.getenv('DB_USER')
+DB_PASSWORD = os.getenv('DB_PASSWORD')
+DB_DATABASE = os.getenv('DB_DATABASE')
+
+#DB接続
+def create_db_connection():
+    connection = None
+    try:
+        connection = mysql.connector.connect(
+            host=DB_HOST,
+            user=DB_USER,
+            passwd=DB_PASSWORD,
+            database=DB_DATABASE
+        )
+        print("MySQL Database connection successful")
+    except mysql.connector.Error as err:
+        print(f"Error: '{err}'")
+    return connection
+
+#DBからメッセージをランダムで選択
+def get_random_response():
+    connection = create_db_connection()
+    response = None
+    if connection is not None:
+        try:
+            cursor = connection.cursor()
+            cursor.execute("SELECT content FROM chats ORDER BY RAND() LIMIT 1")
+            result = cursor.fetchone()
+            if result:
+                response = result[0].replace("\\n", "\n")  # DBから取得した文字列での改行を実際の改行に置き換え
+        except mysql.connector.Error as err:
+            print(f"Error: '{err}'")
+        finally:
+            cursor.close()
+            connection.close()
+    return response
+
 #指定したインデックスの行を編集
 def edit_learning_content(index, new_text):
-    try:
-        with open('chat_res.txt', 'r', encoding='utf-8') as file:
-            lines = file.readlines()
-        if 1 <= index <= len(lines):
-            lines[index - 1] = f"{index}:{new_text}\n"
-        with open('chat_res.txt', 'w', encoding='utf-8') as file:
-            file.writelines(lines)
-        print(f"インデックス{index}の内容を'{new_text}'に編集しました。")
-    except Exception as e:
-        print(f"編集中にエラーが発生しました: {e}")
+    new_text = new_text.replace("\n", "\\n")  # 改行を\nに置き換える
+    connection = create_db_connection()
+    if connection is not None:
+        try:
+            cursor = connection.cursor()
+            cursor.execute("UPDATE chats SET content = %s WHERE id = %s", (new_text, index))
+            connection.commit()
+        except mysql.connector.Error as err:
+            print(f"編集中にエラーが発生しました: {err}")
+        finally:
+            cursor.close()
+            connection.close()
 
 #指定したインデックスの行を削除
 def delete_learning_content(index):
-    try:
-        with open('chat_res.txt', 'r', encoding='utf-8') as file:
-            lines = file.readlines()
-        if 1 <= index <= len(lines):
-            lines.pop(index - 1)
-        lines = [f"{i+1}:{line.split(':', 1)[1]}" for i, line in enumerate(lines)]
-        with open('chat_res.txt', 'w', encoding='utf-8') as file:
-            file.writelines(lines)
-        print(f"インデックス{index}の内容を削除しました。")
-    except Exception as e:
-        print(f"削除中にエラーが発生しました: {e}")
+    connection = create_db_connection()
+    if connection is not None:
+        try:
+            cursor = connection.cursor()
+            cursor.execute("DELETE FROM chats WHERE id = %s", (index,))
+            connection.commit()
+        except mysql.connector.Error as err:
+            print(f"削除中にエラーが発生しました: {err}")
+        finally:
+            cursor.close()
+            connection.close()
+
+#DBからテーブル全体を取得
+def list_learning_content():
+    connection = create_db_connection()
+    responses_str = ""
+    if connection is not None:
+        try:
+            cursor = connection.cursor()
+            cursor.execute("SELECT id, content FROM chats")
+            results = cursor.fetchall()
+            responses_str = "\n".join([f"{id}: {content.replace('\\n', '\n')}" for id, content in results])  # DBの文字列での改行を実際の改行に置き換え
+        except mysql.connector.Error as err:
+            print(f"リスト取得中にエラーが発生しました: {err}")
+        finally:
+            cursor.close()
+            connection.close()
+    return responses_str
 
 #コマンド
 @bot.tree.command(name='chat', description='対話モードの開始・終了')
@@ -638,7 +697,7 @@ async def chat(interaction: discord.Interaction, mode: str):
         await interaction.response.send_message("そんなコマンドないよwwwwwwwwwwwwwwww")
 
 @bot.tree.command(name='learning', description='学習モードの開始・終了・学習内容の表示')
-@app_commands.describe(mode='start, end, list, edit, delete', index='編集または削除する行の番号', new_text='編集する新しいテキスト')
+@app_commands.describe(mode='start, end, list, edit, delete', index='編集or削除する行の番号', new_text='edit:新しいテキスト')
 @app_commands.choices(mode=[
     app_commands.Choice(name='start', value='start'),
     app_commands.Choice(name='end', value='end'),
@@ -688,29 +747,23 @@ async def on_message(message):
     if not (message.channel.id == active_chat_channel_id or message.channel.id == active_learning_channel_id):
         return
     if learning_mode_active and message.channel.id == active_learning_channel_id:
-        try:
-            with open('chat_res.txt', 'r+', encoding='utf-8') as file:
-                lines = file.readlines()
-                next_index = len(lines) + 1
-                file.write(f"{next_index}:{message.content}\n")
-            await message.channel.send(message.content)
-        except Exception as e:
-            print(f"学習モードの処理中にエラーが発生しました: {e}")
+        connection = create_db_connection()
+        if connection is not None:
+            try:
+                content = message.content.replace("\n", "\\n")
+                cursor = connection.cursor()
+                cursor.execute("INSERT INTO chats (content) VALUES (%s)", (content,))
+                connection.commit()
+            except mysql.connector.Error as err:
+                print(f"学習モードの処理中にエラーが発生しました: {err}")
+            finally:
+                cursor.close()
+                connection.close()
+        await message.channel.send(message.content.replace("\\n", "\n"))
     elif chat_mode_active and message.channel.id == active_chat_channel_id:
-        try:
-            with open('chat_res.txt', 'r', encoding='utf-8') as file:
-                lines = file.readlines()
-            responses = []
-            for line in lines:
-                if line.strip():
-                    parts = line.split(":", 1)
-                    if len(parts) > 1:
-                        responses.append(parts[1].strip())
-            if responses:
-                response = random.choice(responses)
-                await message.channel.send(response)
-        except Exception as e:
-            print(f"対話モードの処理中にエラーが発生しました: {e}")
+        response = get_random_response()
+        if response:
+            await message.channel.send(response)
     await bot.process_commands(message)
 
 
@@ -765,7 +818,7 @@ MEMBER_ROLE_ID = os.getenv('MEMBER_ROLE_ID')
 TEMP_ROLE_ID = os.getenv('TEMP_ROLE_ID')
 INFO_CHANNEL_ID = os.getenv('INFO_CHANNEL_ID')
 
-@bot.command(name='setup_temp_role', help='READMEチャンネルにメッセージを設定します。')
+@bot.command(name='autorole', help='READMEチャンネルにメッセージを設定します。')
 @commands.has_permissions(administrator=True)
 async def setup_readme_channel(ctx):
     channel = bot.get_channel(int(README_CHANNEL_ID))
