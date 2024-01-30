@@ -716,13 +716,11 @@ async def learning(interaction: discord.Interaction, mode: str, index: int = Non
         active_learning_channel_id = None
         await interaction.response.send_message("勉強タイム終了")
     elif mode == 'list':
-        try:
-            with open('chat_res.txt', 'r', encoding='utf-8') as file:
-                responses = [line.strip() for line in file.readlines() if line.strip()]
-                responses_str = "\n".join(responses)
+        responses_str = list_learning_content()
+        if responses_str:
             await interaction.response.send_message(f"__**現在の学習内容:**__\n{responses_str}")
-        except Exception as e:
-            await interaction.response.send_message(f"なんかバグったwwwwwwwww\n{e}")
+        else:
+            await interaction.response.send_message("ノー勉状態です、知能指数0wwwwwwww")
     elif mode == 'edit':
         if index is not None and new_text is not None:
             edit_learning_content(index, new_text)
