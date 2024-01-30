@@ -623,7 +623,7 @@ def get_random_response():
             cursor.execute("SELECT content FROM chats ORDER BY RAND() LIMIT 1")
             result = cursor.fetchone()
             if result:
-                response = result[0].replace("\\n", "\n")  # DBから取得した文字列での改行を実際の改行に置き換え
+                response = result[0].replace("\\n", "\n")
         except mysql.connector.Error as err:
             print(f"Error: '{err}'")
         finally:
@@ -633,7 +633,7 @@ def get_random_response():
 
 #指定したインデックスの行を編集
 def edit_learning_content(index, new_text):
-    new_text = new_text.replace("\n", "\\n")  # 改行を\nに置き換える
+    new_text = new_text.replace("\n", "\\n")
     connection = create_db_connection()
     if connection is not None:
         try:
@@ -669,7 +669,7 @@ def list_learning_content():
             cursor = connection.cursor()
             cursor.execute("SELECT id, content FROM chats")
             results = cursor.fetchall()
-            responses_str = "\n".join([f"{id}: {content.replace('\\n', '\n')}" for id, content in results])  # DBの文字列での改行を実際の改行に置き換え
+            responses_str = "\n".join(["{}: {}".format(id, content.replace('\\n', '\n')) for id, content in results])
         except mysql.connector.Error as err:
             print(f"リスト取得中にエラーが発生しました: {err}")
         finally:
