@@ -25,7 +25,7 @@ from help_commands import commands_description, detailed_commands_description
 load_dotenv()
 
 #heroku 環境変数の読み込み
-TOKEN = os.environ.get('TOKEN')
+TOKEN = os.environ.get('SUB_TOKEN')
 GUILD_ID = os.environ.get('GUILD_ID')
 INVITE = os.environ.get('INVITE')
 
@@ -53,12 +53,12 @@ tree = bot.tree
 """
 #テストコマンド
 @tree.command(name='test', description="テストコマンド")
-@app_commands.describe(str="文字をここに打てよなー")
+@app_commands.describe(str="文字をここに打ちなさい(命令形)")
 async def test(interaction: discord.Interaction, str: str = None):
     if str:
         message = f"yo! {str}"
     else:
-        message = "yoo!"
+        message = "yoo!!"
     await interaction.response.send_message(message)
 
 #挨拶コマンド
@@ -68,13 +68,13 @@ async def hello(interaction: discord.Interaction):
     await interaction.response.send_message(f"よお{user_name}")
 
 #bot招待リンク
-@tree.command(name='invite', description="botの招待リンク")
-async def hello(interaction: discord.Interaction):
-    await interaction.response.send_message(f'botの招待リンク:{INVITE}')
+@bot.command(name='invite')
+async def invite(ctx):
+    await ctx.send(f'botの招待リンク:{INVITE}')
 
 #bot開発用
-@tree.command(name='develop', description="discord developerとかdiscord.pyの公式ドキュメントとかgithubとかherokuとか諸々のURL")
-async def develop(interaction: discord.Interaction):
+@bot.command(name='dev')
+async def dev_command(ctx):
     embed = discord.Embed(
         title="開発者用",
         description="いろんなURL",
@@ -89,7 +89,7 @@ async def develop(interaction: discord.Interaction):
     embed.add_field(name="__** unixタイムスタンプ **__", value="https://hammertime.cyou/ja", inline=False)
     embed.add_field(name="__** 参考サイト **__", value=">>> bot作成 : https://zenn.dev/king/articles/4201f4ee821a27\nスラッシュコマンド実装 : https://zenn.dev/952490802574164/articles/b8b0232b29e79b", inline=False)
     embed.set_footer(text="@HALU_33", icon_url="https://halu33.net/img/epril_icon.png")
-    await interaction.response.send_message(embed=embed)
+    await ctx.send(embed=embed)
 
 
 """
@@ -141,12 +141,12 @@ mathコマンド
 ********************************************************************************
 """
 #コマンドグループの定義
-math_commands = app_commands.Group(name="math_commands", description="数学計算コマンド")
+math = app_commands.Group(name="math", description="数学計算コマンド")
 
 #サブコマンド
 
 #たし算
-@math_commands.command(name="add", description="たし算")
+@math.command(name="add", description="たし算")
 @app_commands.describe(num1="第一項", num2="第二項", num3="第三項（任意）", num4="第四項（任意）", num5="第五項（任意）")
 async def math_add(interaction: discord.Interaction, num1: int, num2: int, num3: int = None, num4: int = None, num5: int = None):
     numbers = [num1, num2] + [num for num in [num3, num4, num5] if num is not None]
@@ -155,7 +155,7 @@ async def math_add(interaction: discord.Interaction, num1: int, num2: int, num3:
     await interaction.response.send_message(f"{numbers_str} = {total}")
 
 #ひき算
-@math_commands.command(name="sub", description="ひき算")
+@math.command(name="sub", description="ひき算")
 @app_commands.describe(num1="第一項", num2="第二項", num3="第三項（任意）", num4="第四項（任意）", num5="第五項（任意）")
 async def math_sub(interaction: discord.Interaction, num1: int, num2: int, num3: int = None, num4: int = None, num5: int = None):
     numbers = [num1, -num2] + [-num for num in [num3, num4, num5] if num is not None]
@@ -164,7 +164,7 @@ async def math_sub(interaction: discord.Interaction, num1: int, num2: int, num3:
     await interaction.response.send_message(f"{numbers_str} = {result}")
 
 #かけ算
-@math_commands.command(name="mul", description="かけ算")
+@math.command(name="mul", description="かけ算")
 @app_commands.describe(num1="第一項", num2="第二項", num3="第三項（任意）", num4="第四項（任意）", num5="第五項（任意）")
 async def math_mul(interaction: discord.Interaction, num1: int, num2: int, num3: int = None, num4: int = None, num5: int = None):
     numbers = [num1, num2] + [num for num in [num3, num4, num5] if num is not None]
@@ -173,7 +173,7 @@ async def math_mul(interaction: discord.Interaction, num1: int, num2: int, num3:
     await interaction.response.send_message(f"{numbers_str} = {result}")
 
 #わり算
-@math_commands.command(name="div", description="わり算")
+@math.command(name="div", description="わり算")
 @app_commands.describe(num1="被除数", num2="除数", num3="除数（任意）", num4="除数（任意）", num5="除数（任意）")
 async def math_div(interaction: discord.Interaction, num1: int, num2: int, num3: int = None, num4: int = None, num5: int = None):
     if num2 == 0 or (num3 == 0 and num3 is not None) or (num4 == 0 and num4 is not None) or (num5 == 0 and num5 is not None):
@@ -186,7 +186,7 @@ async def math_div(interaction: discord.Interaction, num1: int, num2: int, num3:
     await interaction.response.send_message(f"{' / '.join(map(str, numbers))} = {result}")
 
 #剰余
-@math_commands.command(name="mod", description="剰余")
+@math.command(name="mod", description="剰余")
 @app_commands.describe(x="被除数", y="除数", x3="除数（任意）", x4="除数（任意）", x5="除数（任意）")
 async def math_mod(interaction: discord.Interaction, x: int, y: int, x3: int = None, x4: int = None, x5: int = None):
     if y == 0 or (x3 == 0 and x3 is not None) or (x4 == 0 and x4 is not None) or (x5 == 0 and x5 is not None):
@@ -200,7 +200,7 @@ async def math_mod(interaction: discord.Interaction, x: int, y: int, x3: int = N
     await interaction.response.send_message(f"{numbers_str} = {result}")
 
 #指数
-@math_commands.command(name="exp", description="指数")
+@math.command(name="exp", description="指数")
 @app_commands.describe(mode="基数の種類（自然対数の底、または他の実数）", exponent="指数", base="基数（他の実数の場合）")
 @app_commands.choices(mode=[
     app_commands.Choice(name='自然対数の底 e', value='e'),
@@ -220,7 +220,7 @@ async def math_exp(interaction: discord.Interaction, mode: str, exponent: int, b
     await interaction.response.send_message(f"{base if mode == 'other' else 'e'} ^ {exponent} = {result}")
 
 #対数
-@math_commands.command(name="log", description="対数")
+@math.command(name="log", description="対数")
 @app_commands.describe(mode="対数の種類（自然対数、常用対数、二進対数）", value="対数を取る値")
 @app_commands.choices(mode=[
     app_commands.Choice(name='自然対数', value='natural'),
@@ -240,7 +240,7 @@ async def math_log(interaction: discord.Interaction, mode: str, value: float):
     await interaction.response.send_message(f"{mode}({value}) = {result}")
 
 #平方根と累乗根
-@math_commands.command(name="root", description="平方根または累乗根")
+@math.command(name="root", description="平方根または累乗根")
 @app_commands.describe(mode="計算モード（平方根または累乗根）", value="根を取る値", radical="累乗根の次数")
 @app_commands.choices(mode=[
     app_commands.Choice(name='平方根', value='sqrt'),
@@ -259,7 +259,7 @@ async def math_root(interaction: discord.Interaction, mode: str, value: float, r
     await interaction.response.send_message(f"{value} の {radical} 乗根 = {result}")
 
 #sin
-@math_commands.command(name="sin", description="正弦(sin)・逆正弦(arcsin)")
+@math.command(name="sin", description="正弦(sin)・逆正弦(arcsin)")
 @app_commands.describe(mode="モード（sin or arcsin）", value="角度（度数法）または値")
 @app_commands.choices(mode=[
     app_commands.Choice(name='sin', value='sin'),
@@ -275,7 +275,7 @@ async def math_sin(interaction: discord.Interaction, mode: str, value: float):
     await interaction.response.send_message(f"{mode}({value}) = {result}")
 
 #cos
-@math_commands.command(name="cos", description="余弦(cos)・逆余弦(arccos)")
+@math.command(name="cos", description="余弦(cos)・逆余弦(arccos)")
 @app_commands.describe(mode="モード（cos or arccos）", value="角度（度数法）または値")
 @app_commands.choices(mode=[
     app_commands.Choice(name='cos', value='cos'),
@@ -291,7 +291,7 @@ async def math_cos(interaction: discord.Interaction, mode: str, value: float):
     await interaction.response.send_message(f"{mode}({value}) = {result}")
 
 #tan
-@math_commands.command(name="tan", description="正接(tan)・逆正接(arctan)")
+@math.command(name="tan", description="正接(tan)・逆正接(arctan)")
 @app_commands.describe(mode="モード（tan or arctan）", value="角度（度数法）または値")
 @app_commands.choices(mode=[
     app_commands.Choice(name='tan', value='tan'),
@@ -307,7 +307,7 @@ async def math_tan(interaction: discord.Interaction, mode: str, value: float):
     await interaction.response.send_message(f"{mode}({value}) = {result}")
 
 #数列
-@math_commands.command(name="sigma", description="数列Σの計算")
+@math.command(name="sigma", description="数列Σの計算")
 @app_commands.describe(k="シグマの下限値", n="シグマの上限値", sequence="計算する数列の式（'k'を変数として使用）例:k、k*k、k+3など")
 async def math_sigma(interaction: discord.Interaction, k: int, n: int, sequence: str):
     try:
@@ -317,7 +317,7 @@ async def math_sigma(interaction: discord.Interaction, k: int, n: int, sequence:
         await interaction.response.send_message(f"式の計算中にエラーが発生しました: {e}")
 
 #グループをbotのコマンドツリーに追加
-bot.tree.add_command(math_commands)
+bot.tree.add_command(math)
 
 """
 ********************************************************************************
@@ -442,27 +442,26 @@ recruitment_status = {}
 class RecruitmentButton(discord.ui.Button):
     def __init__(self, label, custom_id):
         super().__init__(style=discord.ButtonStyle.primary, label=label, custom_id=custom_id)
-
     async def callback(self, interaction: discord.Interaction):
         global recruitment_status
         time = self.label
         user = interaction.user
-
         await interaction.response.defer(ephemeral=True)
-
         if time not in recruitment_status:
             recruitment_status[time] = Recruitment()
         recruitment = recruitment_status[time]
-
+        action = ''
         if user in recruitment.confirmed or user in recruitment.tentative or user in recruitment.standby:
-            recruitment.confirmed.discard(user)
-            recruitment.tentative.discard(user)
-            recruitment.standby.discard(user)
+            recruitment.update_member_status(user, 'drop')
             action = '挙手取り下げ'
         else:
-            recruitment.confirmed.add(user)
+            recruitment.update_member_status(user, 'c')
             action = '挙手'
-
+        role = await create_role_for_time(interaction.guild, time)
+        if action == '挙手':
+            await user.add_roles(role)
+        elif action == '挙手取り下げ':
+            await user.remove_roles(role)
         await update_recruitment_message(interaction.channel)
 
 #募集状況メッセージの更新
@@ -496,7 +495,6 @@ async def update_recruitment_message(channel, target_member=None, action='', tim
             break
     await channel.send(embed=embed, view=view)
 
-
 #最後のメッセージ取得
 async def get_last_message(channel):
     async for message in channel.history(limit=1):
@@ -505,44 +503,51 @@ async def get_last_message(channel):
 
 #ロール作成
 async def create_role_for_time(guild, time):
-    """ 指定された時間に対応するロールを作成 """
+    """指定された時間に対応するロールを作成または取得"""
     role_name = str(time)
-    return await guild.create_role(name=role_name)
+    role = discord.utils.get(guild.roles, name=role_name)
+    if role is None:
+        role = await guild.create_role(name=role_name)
+    return role
 
 #ロール削除
 async def delete_role_for_time(guild, time):
-    """ 指定された時間のロールを削除 """
+    """指定された時間のロールを削除"""
     role_name = str(time)
     role = discord.utils.get(guild.roles, name=role_name)
     if role:
         await role.delete()
 
 #コマンド
+kyosyu = app_commands.Group(name="kyosyu", description="挙手コマンド")
 
 #can
-@bot.tree.command(name='can', description='メンバーを募集or挙手をする')
+@kyosyu.command(name='can', description='メンバーを募集or挙手をする')
 @app_commands.choices(type=[
     app_commands.Choice(name='確定', value='c'),
     app_commands.Choice(name='仮', value='r'),
     app_commands.Choice(name='補欠', value='s')
 ])
 async def can(interaction: discord.Interaction, time: str, type: str = 'c', member: discord.Member = None):
+    await interaction.response.send_message(f"<@{interaction.user.id}>が挙手しました")
     target_member = member or interaction.user
     new_times = time.split()
     sorted_times = sorted(set(new_times), key=lambda x: int(x))
     times_str = " ".join(sorted_times)
-    for t in sorted_times:
-        if t not in recruitment_status:
-            recruitment_status[t] = Recruitment()
-        recruitment_status[t].update_member_status(target_member, type)
-        role = await create_role_for_time(interaction.guild, t)
-        await target_member.add_roles(role)
+    roles = await asyncio.gather(*[create_role_for_time(interaction.guild, t) for t in sorted_times])
+    await asyncio.gather(*[update_member_and_assign_role(interaction, t, target_member, type) for t in sorted_times])
     await update_recruitment_message(interaction.channel)
     await interaction.response.defer(ephemeral=True)
     await interaction.followup.send(f"<@{target_member.id}>が{times_str}時に挙手しました。", ephemeral=True)
+async def update_member_and_assign_role(interaction, time, member, type):
+    if time not in recruitment_status:
+        recruitment_status[time] = Recruitment()
+    recruitment_status[time].update_member_status(member, type)
+    role = await create_role_for_time(interaction.guild, time)
+    await member.add_roles(role)
 
 #drop
-@bot.tree.command(name='drop', description='挙手を取り下げる')
+@kyosyu.command(name='drop', description='挙手を取り下げる')
 async def drop(interaction: discord.Interaction, time: str, member: discord.Member = None):
     target_member = member or interaction.user
     new_times = time.split()
@@ -550,36 +555,39 @@ async def drop(interaction: discord.Interaction, time: str, member: discord.Memb
     times_str = " ".join(sorted_times)
     for t in sorted_times:
         if t in recruitment_status:
-            recruitment_status[t].update_member_status(target_member, 'drop')
-            role_name = str(t)
-            role = discord.utils.get(interaction.guild.roles, name=role_name)
+            recruitment = recruitment_status[t]
+            recruitment.update_member_status(target_member, 'drop')
+            role = discord.utils.get(interaction.guild.roles, name=str(t))
             if role:
                 await target_member.remove_roles(role)
+            else:
+                print(f"Role {t} not found for removal.")
     await update_recruitment_message(interaction.channel)
     await interaction.response.defer(ephemeral=True)
-    await interaction.followup.send(f"<@{target_member.id}>が{times_str}時の挙手を取り下げました。", ephemeral=True)
+    await interaction.followup.send(f"<@{target_member.id}>が{times_str}時の挙手を取り下げました。")
+
 
 #now
-@bot.tree.command(name='now', description='現在の募集状況を表示する')
+@kyosyu.command(name='now', description='現在の募集状況を表示する')
 async def now(interaction: discord.Interaction):
-    await interaction.response.defer(ephemeral=True)
+    await interaction.response.defer(ephemeral=False)
     if not recruitment_status:
-        await interaction.followup.send("現在の募集はありません。", ephemeral=False)
+        await interaction.followup.send("現在の募集はありません。")
     else:
-        await interaction.followup.send("現在の募集状況を表示", ephemeral=True)
+        await interaction.followup.send("現在の募集状況を表示")
         await update_recruitment_message(interaction.channel)
 
 #clear
-@bot.tree.command(name='clear', description='募集状況をリセットする')
+@kyosyu.command(name='clear', description='募集状況をリセットする')
 async def clear(interaction: discord.Interaction):
     global recruitment_status
-    for time in recruitment_status.keys():
-        role_name = str(time)
-        role = discord.utils.get(interaction.guild.roles, name=role_name)
-        if role:
-            await role.delete()
+    for time in list(recruitment_status.keys()):
+        await delete_role_for_time(interaction.guild, time)
     recruitment_status.clear()
-    await interaction.response.send_message("募集状況をリセットしました。", ephemeral=False)
+    await interaction.response.send_message("募集状況をリセットしました。")
+
+#グループをbotのコマンドツリーに追加
+bot.tree.add_command(kyosyu)
 
 
 """
