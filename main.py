@@ -25,7 +25,7 @@ from help_commands import commands_description, detailed_commands_description
 load_dotenv()
 
 #heroku 環境変数の読み込み
-TOKEN = os.environ.get('SUB_TOKEN')
+TOKEN = os.environ.get('TOKEN')
 GUILD_ID = os.environ.get('GUILD_ID')
 INVITE = os.environ.get('INVITE')
 
