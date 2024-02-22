@@ -7,7 +7,9 @@ from discord.ext import commands
 from discord import app_commands
 from discord.partial_emoji import PartialEmoji
 from discord.ui import Button, View
+import math
 import math as math_module
+import statistics
 import random
 import logging
 import time
@@ -25,7 +27,7 @@ from help_commands import commands_description, detailed_commands_description
 load_dotenv()
 
 #heroku 環境変数の読み込み
-TOKEN = os.environ.get('TOKEN')
+TOKEN = os.environ.get('SUB_TOKEN')
 GUILD_ID = os.environ.get('GUILD_ID')
 INVITE = os.environ.get('INVITE')
 
@@ -53,7 +55,7 @@ tree = bot.tree
 """
 #テストコマンド
 @tree.command(name='test', description="テストコマンド")
-@app_commands.describe(str="文字をここに打ちなさい(命令形)")
+@app_commands.describe(str="文字をここに打て--")
 async def test(interaction: discord.Interaction, str: str = None):
     if str:
         message = f"yo! {str}"
@@ -145,59 +147,75 @@ math = app_commands.Group(name="math", description="数学計算コマンド")
 
 #サブコマンド
 
+#numリスト カンマ区切り
+def parse_numbers(input_str: str) -> list:
+    return [float(num) for num in input_str.split(',')]
+
 #たし算
 @math.command(name="add", description="たし算")
-@app_commands.describe(num1="第一項", num2="第二項", num3="第三項（任意）", num4="第四項（任意）", num5="第五項（任意）")
-async def math_add(interaction: discord.Interaction, num1: int, num2: int, num3: int = None, num4: int = None, num5: int = None):
-    numbers = [num1, num2] + [num for num in [num3, num4, num5] if num is not None]
-    total = sum(numbers)
-    numbers_str = " + ".join(map(str, numbers))
-    await interaction.response.send_message(f"{numbers_str} = {total}")
+async def math_add(interaction: discord.Interaction, *, nums: str):
+    numbers = parse_numbers(nums)
+    result = sum(numbers)
+    await interaction.response.send_message(f"{' + '.join(map(str, numbers))} = {result}")
 
 #ひき算
 @math.command(name="sub", description="ひき算")
-@app_commands.describe(num1="第一項", num2="第二項", num3="第三項（任意）", num4="第四項（任意）", num5="第五項（任意）")
-async def math_sub(interaction: discord.Interaction, num1: int, num2: int, num3: int = None, num4: int = None, num5: int = None):
-    numbers = [num1, -num2] + [-num for num in [num3, num4, num5] if num is not None]
-    result = sum(numbers)
-    numbers_str = " - ".join(map(str, [num1] + [num2, num3, num4, num5]))
-    await interaction.response.send_message(f"{numbers_str} = {result}")
+async def math_sub(interaction: discord.Interaction, *, nums: str):
+    numbers = parse_numbers(nums)
+    result = numbers[0] - sum(numbers[1:])
+    await interaction.response.send_message(f"{' - '.join(map(str, numbers))} = {result}")
 
 #かけ算
 @math.command(name="mul", description="かけ算")
-@app_commands.describe(num1="第一項", num2="第二項", num3="第三項（任意）", num4="第四項（任意）", num5="第五項（任意）")
-async def math_mul(interaction: discord.Interaction, num1: int, num2: int, num3: int = None, num4: int = None, num5: int = None):
-    numbers = [num1, num2] + [num for num in [num3, num4, num5] if num is not None]
-    result = math_module.prod(numbers)
-    numbers_str = " * ".join(map(str, numbers))
-    await interaction.response.send_message(f"{numbers_str} = {result}")
+async def math_mul(interaction: discord.Interaction, *, nums: str):
+    numbers = parse_numbers(nums)
+    result = math.prod(numbers)
+    await interaction.response.send_message(f"{' * '.join(map(str, numbers))} = {result}")
 
 #わり算
 @math.command(name="div", description="わり算")
-@app_commands.describe(num1="被除数", num2="除数", num3="除数（任意）", num4="除数（任意）", num5="除数（任意）")
-async def math_div(interaction: discord.Interaction, num1: int, num2: int, num3: int = None, num4: int = None, num5: int = None):
-    if num2 == 0 or (num3 == 0 and num3 is not None) or (num4 == 0 and num4 is not None) or (num5 == 0 and num5 is not None):
-        await interaction.response.send_message("0で割ることはできません。")
-        return
-    numbers = [num1, num2] + [num for num in [num3, num4, num5] if num is not None]
-    result = numbers[0]
-    for num in numbers[1:]:
-        result /= num
-    await interaction.response.send_message(f"{' / '.join(map(str, numbers))} = {result}")
+async def math_div(interaction: discord.Interaction, *, nums: str):
+    numbers = parse_numbers(nums)
+    try:
+        result = numbers[0]
+        for num in numbers[1:]:
+            result /= num
+        await interaction.response.send_message(f"{' / '.join(map(str, numbers))} = {result}")
+    except ZeroDivisionError:
+        await interaction.response.send_message("エラー: 0で割ることはできません。")
 
 #剰余
 @math.command(name="mod", description="剰余")
-@app_commands.describe(x="被除数", y="除数", x3="除数（任意）", x4="除数（任意）", x5="除数（任意）")
-async def math_mod(interaction: discord.Interaction, x: int, y: int, x3: int = None, x4: int = None, x5: int = None):
-    if y == 0 or (x3 == 0 and x3 is not None) or (x4 == 0 and x4 is not None) or (x5 == 0 and x5 is not None):
-        await interaction.response.send_message("0で割ることはできません。")
-        return
-    numbers = [x, y] + [num for num in [x3, x4, x5] if num is not None]
+async def math_mod(interaction: discord.Interaction, *, nums: str):
+    numbers = parse_numbers(nums)
     result = numbers[0] % numbers[1]
     for num in numbers[2:]:
         result %= num
-    numbers_str = " % ".join(map(str, numbers))
-    await interaction.response.send_message(f"{numbers_str} = {result}")
+    await interaction.response.send_message(f"{' % '.join(map(str, numbers))} = {result}")
+
+#平均
+@math.command(name="avg", description="平均値")
+async def math_avg(interaction: discord.Interaction, *, nums: str):
+    numbers = parse_numbers(nums)
+    avg = sum(numbers) / len(numbers)
+    await interaction.response.send_message(f"平均:{avg}")
+
+#中央値
+@math.command(name="mdn", description="中央値")
+async def math_mdn(interaction: discord.Interaction, *, nums: str):
+    numbers = parse_numbers(nums)
+    mdn = statistics.median(numbers)
+    await interaction.response.send_message(f"中央値:{mdn}")
+
+#最頻値
+@math.command(name="mode", description="最頻値")
+async def math_mode(interaction: discord.Interaction, *, nums: str):
+    numbers = parse_numbers(nums)
+    try:
+        mode = statistics.mode(numbers)
+        await interaction.response.send_message(f"最頻値:{mode}")
+    except statistics.StatisticsError as e:
+        await interaction.response.send_message(f"エラー:{str(e)}")
 
 #指数
 @math.command(name="exp", description="指数")
@@ -864,6 +882,21 @@ async def on_raw_reaction_add(payload):
                 #print(f"メンバーロールが{member}に付与、Tempロール削除")
     except Exception as e:
         print(f'リアクションによるロール処理中にエラーが発生しました: {e}')
+
+
+#ワードに反応してメンション
+@bot.event
+async def on_message(message):
+    #botのメッセージを無視
+    if message.author.bot:
+        return
+    # 反応するキーワードリスト
+    trigger_words = ['はる', 'halu', 'HALU_33']
+    if any(word in message.content for word in trigger_words):
+        user_id = os.getenv('HALU_33_USER_ID')
+        mention = f'<@{user_id}>'
+        await message.channel.send(f'{mention}')
+    await bot.process_commands(message)
 
 
 """
