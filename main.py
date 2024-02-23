@@ -772,7 +772,6 @@ async def on_message(message):
         response = get_random_response()
         if response:
             await message.channel.send(response)
-        return
     if not (message.channel.id == active_chat_channel_id or message.channel.id == active_learning_channel_id):
         return
     if learning_mode_active and message.channel.id == active_learning_channel_id:
