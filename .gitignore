@@ -8,4 +8,5 @@ __pycache__/
 
 db_test.py
 
-messages.txt
+prompt_k.txt
+prompt.txt

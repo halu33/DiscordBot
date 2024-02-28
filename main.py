@@ -4,6 +4,7 @@ import discord
 from discord.emoji import Emoji
 from discord.enums import ButtonStyle
 from discord.ext import commands
+from discord.ext.commands import CommandNotFound
 from discord import app_commands
 from discord.partial_emoji import PartialEmoji
 from discord.ui import Button, View
@@ -886,16 +887,26 @@ async def on_raw_reaction_add(payload):
 #ワードに反応してメンション
 @bot.event
 async def on_message(message):
-    #botのメッセージを無視
     if message.author.bot:
         return
-    # 反応するキーワードリスト
-    trigger_words = ['はる', 'halu', 'HALU_33']
-    if any(word in message.content for word in trigger_words):
+    developer_trigger_words = ['はる', 'halu', 'HALU_33']
+    special_response_words = {
+        'ゆうんぬ': 'んぬ～><',
+        'んぬ': 'んぬ～><'
+    }
+    response_sent = False
+    if any(word in message.content for word in developer_trigger_words):
         user_id = os.getenv('HALU_33_USER_ID')
         mention = f'<@{user_id}>'
         await message.channel.send(f'{mention}')
-    await bot.process_commands(message)
+        response_sent = True
+    for trigger_word, response in special_response_words.items():
+        if trigger_word in message.content:
+            await message.channel.send(response)
+            response_sent = True
+            break
+    if not response_sent:
+        await bot.process_commands(message)
 
 
 """
