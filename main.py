@@ -56,7 +56,7 @@ tree = bot.tree
 """
 #テストコマンド
 @tree.command(name='test', description="テストコマンド")
-@app_commands.describe(str="文字をここに打て--")
+@app_commands.describe(str="文字をここに打ってくださいね！")
 async def test(interaction: discord.Interaction, str: str = None):
     if str:
         message = f"yo! {str}"
@@ -138,295 +138,168 @@ async def help(interaction: discord.Interaction):
         view.add_item(button)
     await interaction.response.send_message(embed=embed, view=view)
 
+
 """
 ********************************************************************************
-mathコマンド
+支援値計算
 ********************************************************************************
 """
-#コマンドグループの定義
-math = app_commands.Group(name="math", description="数学計算コマンド")
-
-#サブコマンド
-
-#numリスト カンマ区切り
-def parse_numbers(input_str: str) -> list:
-    return [float(num) for num in input_str.split(',')]
-
-#たし算
-@math.command(name="add", description="たし算")
-async def math_add(interaction: discord.Interaction, *, nums: str):
-    numbers = parse_numbers(nums)
-    result = sum(numbers)
-    await interaction.response.send_message(f"{' + '.join(map(str, numbers))} = {result}")
-
-#ひき算
-@math.command(name="sub", description="ひき算")
-async def math_sub(interaction: discord.Interaction, *, nums: str):
-    numbers = parse_numbers(nums)
-    result = numbers[0] - sum(numbers[1:])
-    await interaction.response.send_message(f"{' - '.join(map(str, numbers))} = {result}")
-
-#かけ算
-@math.command(name="mul", description="かけ算")
-async def math_mul(interaction: discord.Interaction, *, nums: str):
-    numbers = parse_numbers(nums)
-    result = math.prod(numbers)
-    await interaction.response.send_message(f"{' * '.join(map(str, numbers))} = {result}")
-
-#わり算
-@math.command(name="div", description="わり算")
-async def math_div(interaction: discord.Interaction, *, nums: str):
-    numbers = parse_numbers(nums)
+@bot.tree.command(name='sien', description="支援値の計算")
+@app_commands.describe(total_power="編成の総合演技力", multiplier="リーダーのSAの倍率", sa="SAの回数")
+async def sien(interaction: discord.Interaction, *, total_power: int, multiplier: float, sa: int):
     try:
-        result = numbers[0]
-        for num in numbers[1:]:
-            result /= num
-        await interaction.response.send_message(f"{' / '.join(map(str, numbers))} = {result}")
-    except ZeroDivisionError:
-        await interaction.response.send_message("エラー: 0で割ることはできません。")
+        #支援値の計算式
+        support_value = (total_power * multiplier * sa) / 2
 
-#剰余
-@math.command(name="mod", description="剰余")
-async def math_mod(interaction: discord.Interaction, *, nums: str):
-    numbers = parse_numbers(nums)
-    result = numbers[0] % numbers[1]
-    for num in numbers[2:]:
-        result %= num
-    await interaction.response.send_message(f"{' % '.join(map(str, numbers))} = {result}")
+        #計算結果をembedで出力
+        embed = discord.Embed(
+            type="rich",
+            title="支援値の計算",
+            description=f"総合力 {total_power} * 倍率 {multiplier} * SA回数 {sa} / 2 = **支援値：{support_value}**",
+            color=0x00ff08,
+            url="https://gamerch.com/world-dai-star/entry/841244"
+        )
 
-#平均
-@math.command(name="avg", description="平均値")
-async def math_avg(interaction: discord.Interaction, *, nums: str):
-    numbers = parse_numbers(nums)
-    avg = sum(numbers) / len(numbers)
-    await interaction.response.send_message(f"平均:{avg}")
+        #embedを送信
+        await interaction.response.send_message(embed=embed)
 
-#中央値
-@math.command(name="mdn", description="中央値")
-async def math_mdn(interaction: discord.Interaction, *, nums: str):
-    numbers = parse_numbers(nums)
-    mdn = statistics.median(numbers)
-    await interaction.response.send_message(f"中央値:{mdn}")
+    except (TypeError, ValueError):
+        await interaction.response.send_message("引数に不正な値が含まれています。正しい値を入力してください。")
 
-#最頻値
-@math.command(name="mode", description="最頻値")
-async def math_mode(interaction: discord.Interaction, *, nums: str):
-    numbers = parse_numbers(nums)
-    try:
-        mode = statistics.mode(numbers)
-        await interaction.response.send_message(f"最頻値:{mode}")
-    except statistics.StatisticsError as e:
-        await interaction.response.send_message(f"エラー:{str(e)}")
-
-#指数
-@math.command(name="exp", description="指数")
-@app_commands.describe(mode="基数の種類（自然対数の底、または他の実数）", exponent="指数", base="基数（他の実数の場合）")
-@app_commands.choices(mode=[
-    app_commands.Choice(name='自然対数の底 e', value='e'),
-    app_commands.Choice(name='他の実数', value='other')
-])
-async def math_exp(interaction: discord.Interaction, mode: str, exponent: int, base: float = None):
-    if mode == 'e':
-        result = math_module.exp(exponent)
-    elif mode == 'other':
-        if base is None:
-            await interaction.response.send_message("基数を入力してください。")
-            return
-        result = base ** exponent
-    else:
-        await interaction.response.send_message("無効なモードが指定されました。")
-        return
-    await interaction.response.send_message(f"{base if mode == 'other' else 'e'} ^ {exponent} = {result}")
-
-#対数
-@math.command(name="log", description="対数")
-@app_commands.describe(mode="対数の種類（自然対数、常用対数、二進対数）", value="対数を取る値")
-@app_commands.choices(mode=[
-    app_commands.Choice(name='自然対数', value='natural'),
-    app_commands.Choice(name='常用対数', value='common'),
-    app_commands.Choice(name='二進対数', value='binary')
-])
-async def math_log(interaction: discord.Interaction, mode: str, value: float):
-    if mode == 'natural':
-        result = math_module.log(value)
-    elif mode == 'common':
-        result = math_module.log10(value)
-    elif mode == 'binary':
-        result = math_module.log2(value)
-    else:
-        await interaction.response.send_message("無効なモードが指定されました。")
-        return
-    await interaction.response.send_message(f"{mode}({value}) = {result}")
-
-#平方根と累乗根
-@math.command(name="root", description="平方根または累乗根")
-@app_commands.describe(mode="計算モード（平方根または累乗根）", value="根を取る値", radical="累乗根の次数")
-@app_commands.choices(mode=[
-    app_commands.Choice(name='平方根', value='sqrt'),
-    app_commands.Choice(name='累乗根', value='nroot')
-])
-async def math_root(interaction: discord.Interaction, mode: str, value: float, radical: int = 2):
-    if mode == 'sqrt':
-        result = math_module.sqrt(value)
-    elif mode == 'nroot':
-        if radical <= 0:
-            await interaction.response.send_message("根の次数は正の整数でなければなりません。")
-            return
-        result = value ** (1 / radical)
-    else:
-        await interaction.response.send_message("無効なモードが指定されました。")
-    await interaction.response.send_message(f"{value} の {radical} 乗根 = {result}")
-
-#sin
-@math.command(name="sin", description="正弦(sin)・逆正弦(arcsin)")
-@app_commands.describe(mode="モード（sin or arcsin）", value="角度（度数法）または値")
-@app_commands.choices(mode=[
-    app_commands.Choice(name='sin', value='sin'),
-    app_commands.Choice(name='arcsin', value='arcsin')
-])
-async def math_sin(interaction: discord.Interaction, mode: str, value: float):
-    if mode == 'sin':
-        result = math_module.sin(math_module.radians(value))
-    elif mode == 'arcsin':
-        result = math_module.degrees(math_module.asin(value))
-    else:
-        await interaction.response.send_message("無効なモードが指定されました。")
-    await interaction.response.send_message(f"{mode}({value}) = {result}")
-
-#cos
-@math.command(name="cos", description="余弦(cos)・逆余弦(arccos)")
-@app_commands.describe(mode="モード（cos or arccos）", value="角度（度数法）または値")
-@app_commands.choices(mode=[
-    app_commands.Choice(name='cos', value='cos'),
-    app_commands.Choice(name='arccos', value='arccos')
-])
-async def math_cos(interaction: discord.Interaction, mode: str, value: float):
-    if mode == 'cos':
-        result = math_module.cos(math_module.radians(value))
-    elif mode == 'arccos':
-        result = math_module.degrees(math_module.acos(value))
-    else:
-        await interaction.response.send_message("無効なモードが指定されました。")
-    await interaction.response.send_message(f"{mode}({value}) = {result}")
-
-#tan
-@math.command(name="tan", description="正接(tan)・逆正接(arctan)")
-@app_commands.describe(mode="モード（tan or arctan）", value="角度（度数法）または値")
-@app_commands.choices(mode=[
-    app_commands.Choice(name='tan', value='tan'),
-    app_commands.Choice(name='arctan', value='arctan')
-])
-async def math_tan(interaction: discord.Interaction, mode: str, value: float):
-    if mode == 'tan':
-        result = math_module.tan(math_module.radians(value))
-    elif mode == 'arctan':
-        result = math_module.degrees(math_module.atan(value))
-    else:
-        await interaction.response.send_message("無効なモードが指定されました。")
-    await interaction.response.send_message(f"{mode}({value}) = {result}")
-
-#数列
-@math.command(name="sigma", description="数列Σの計算")
-@app_commands.describe(k="シグマの下限値", n="シグマの上限値", sequence="計算する数列の式（'k'を変数として使用）例:k、k*k、k+3など")
-async def math_sigma(interaction: discord.Interaction, k: int, n: int, sequence: str):
-    try:
-        total = sum(eval(sequence.replace("k", str(i))) for i in range(k, n + 1))
-        await interaction.response.send_message(f"Σ({sequence}) from {k} to {n} = {total}")
-    except Exception as e:
-        await interaction.response.send_message(f"式の計算中にエラーが発生しました: {e}")
-
-#グループをbotのコマンドツリーに追加
-bot.tree.add_command(math)
 
 """
 ********************************************************************************
 pollコマンド
 ********************************************************************************
 """
-#embed作成
-def create_poll_embed(poll, author, end_time):
-    embed = discord.Embed(title=poll['title'], description=poll['description'], color=0x00ff4c, timestamp=datetime.now())
-    embed.set_footer(text=f"作成者: {author.display_name}", icon_url=author.avatar.url if author.avatar else None)
-    end_timestamp = int(time.mktime(end_time.timetuple()))
-    embed.add_field(name="投票期限", value=f"<t:{end_timestamp}:F> <t:{end_timestamp}:R>", inline=False)
-    for choice, voters in zip(poll['choices'], poll['votes']):
-        embed.add_field(name=choice, value="\n".join(voters) if voters else "まだ投票がありません", inline=True)
+@tree.command(name="poll", description="投票を作成します")
+@app_commands.describe(
+    title="投票のタイトル (必須)",
+    allow_duplicate="重複投票を許可するか (True/False)",
+    choice_list="選択肢 (半角カンマ区切り、最大19択まで)"
+)
+async def poll(
+    interaction: discord.Interaction,
+    title: str,
+    allow_duplicate: bool,
+    choice_list: str,
+    description: str = ""
+):
+    try:
+        # 選択肢の分割
+        choices = choice_list.split(',')
+
+        #選択肢の数が20以上の場合はエラーを返す
+        if len(choices) > 19:
+            await interaction.response.send_message("選択肢は19個以下にしてください")
+            return
+
+        #投票データの作成
+        poll_data = create_poll_data(interaction, title, description, allow_duplicate, choices)
+        embed = create_poll_embed(interaction, title, description, choices, poll_data["votes"], poll_data["voters"])
+        if interaction.channel is None:
+            logging.error("interaction.channel is None")
+            return
+        response = await interaction.response.send_message(f"{interaction.user.mention}が投票を作成しました")
+        poll_message = await interaction.channel.send(embed=embed)
+
+        #投票選択肢に対するリアクション追加
+        for idx in range(len(choices)):
+            await poll_message.add_reaction(chr(0x1F1E6 + idx))
+        await poll_message.add_reaction("❌")
+        poll_data["message_id"] = poll_message.id
+        bot.active_polls[poll_message.id] = poll_data
+
+    except Exception as e:
+        logging.error(f"投票コマンドのエラー: {e}")
+        raise e
+
+#投票用embedを作成
+def create_poll_embed(author_name, title, description, choices, votes, voters):
+    embed = discord.Embed(title=title, description=description, color=0x00ff84)
+    for idx, (choice, vote, voter) in enumerate(zip(choices, votes, voters)):
+        voter_names = ', '.join([f'<@{v}>' for v in voter])
+        embed.add_field(name=f"{chr(ord('A') + idx)}. {choice}", value=f"{vote} 票 ({voter_names})", inline=False)
+    embed.set_footer(text=f"作成者: {author_name}")
     return embed
 
-#投票ボタン
-class PollButton(discord.ui.Button):
-    def __init__(self, label, poll_id, choice_index, is_end_button=False):
-        super().__init__(style=discord.ButtonStyle.primary if not is_end_button else discord.ButtonStyle.red, label=label)
-        self.poll_id = poll_id
-        self.choice_index = choice_index
-        self.is_end_button = is_end_button
-
-    async def callback(self, interaction: discord.Interaction):
-        global polls
-        poll = polls[self.poll_id]
-        user = interaction.user.display_name
-        #即時応答を送信
-        await interaction.response.defer(ephemeral=True)
-        await interaction.followup.send("処理中...", ephemeral=True)
-        if not self.is_end_button:
-            #投票処理
-            if not poll['allow_duplicate']:
-                for vote_set in poll['votes']:
-                    vote_set.discard(user)
-            poll['votes'][self.choice_index].add(user)
-            new_embed = create_poll_embed(poll, interaction.user, poll['end_time'])
-            new_view = PollView(self.poll_id, poll['end_time'])
-            await interaction.followup.send(embed=new_embed, view=new_view)
-            await interaction.message.delete()
-        else:
-            #投票終了処理
-            embed = create_poll_embed(poll, interaction.user, poll['end_time'])
-            embed.title = f"投票が終了しました: {poll['title']}"
-            embed.description = f"結果が確定しました。: {poll['description']}"
-            for item in self.view.children:
-                item.disabled = True
-            await interaction.followup.send(embed=embed, view=self.view)
-        await interaction.message.delete()
-
-#投票インタラクションビュー
-class PollView(discord.ui.View):
-    def __init__(self, poll_id, end_time):
-        super().__init__()
-        self.poll_id = poll_id
-        self.end_time = end_time
-        poll = polls[poll_id]
-        for i, choice in enumerate(poll['choices']):
-            self.add_item(PollButton(label=choice, poll_id=poll_id, choice_index=i))
-        end_button = PollButton(label="終了", poll_id=poll_id, choice_index=-1, is_end_button=True)
-        self.add_item(end_button)
-
-#コマンド
-@bot.tree.command(name='poll', description='投票を作成する')
-@app_commands.describe(
-    title='タイトル',
-    choices='選択肢（カンマ区切りで最大10個）',
-    description='投票の詳細（任意）',
-    allow_duplicate='投票の重複を許可するか（デフォルトはFalse）',
-)
-async def poll(interaction: discord.Interaction, title: str, choices: str, description: str = '', allow_duplicate: bool = False):
-    choices_list = choices.split(',')
-    if len(choices_list) > 10:
-        await interaction.response.send_message("選択肢は10個までです。")
-        return
-    end_time = datetime.now() + timedelta(hours=24)
-    poll_id = len(polls)
-    poll = {
-        'title': title,
-        'description': description,
-        'choices': choices_list,
-        'votes': [set() for _ in choices_list],
-        'allow_duplicate': allow_duplicate,
-        'author': interaction.user,
-        'end_time': end_time
+#投票データ作成
+def create_poll_data(interaction, title, description, allow_duplicate, choices):
+    return {
+        "title": title,
+        "description": description,
+        "allow_duplicate": allow_duplicate,
+        "choices": choices,
+        "votes": [0] * len(choices),
+        "voters": [set() for _ in choices],
+        "channel_id": interaction.channel.id,
+        "author_id": interaction.user.id
     }
-    polls.append(poll)
-    await interaction.response.send_message(embed=create_poll_embed(poll, interaction.user, end_time), view=PollView(poll_id, end_time))
-polls = []
+
+bot.active_polls = {}
+
+#投票結果のembed作成
+def create_final_result_embed(poll_data, user):
+    result = "\n".join(f"{choice}: {votes}" for choice, votes in zip(poll_data["choices"], poll_data["votes"]))
+    return discord.Embed(title="投票結果", description=result, color=0x00ff00)
+
+#投票結果の表示
+def remove_previous_vote(poll_data, user):
+    if not poll_data["allow_duplicate"]:
+        for idx, voters in enumerate(poll_data["voters"]):
+            if user.id in voters:
+                voters.remove(user.id)
+                poll_data["votes"][idx] -= 1
+
+#新規投票の追加
+def add_new_vote(poll_data, vote_idx, user):
+    if user.id not in poll_data["voters"][vote_idx]:
+        poll_data["voters"][vote_idx].add(user.id)
+        poll_data["votes"][vote_idx] += 1
+
+#投票の削除
+def remove_vote(poll_data, vote_idx, user):
+    if user.id in poll_data["voters"][vote_idx]:
+        poll_data["votes"][vote_idx] -= 1
+        poll_data["voters"][vote_idx].remove(user.id)
+
+#リアクション追加時の処理
+@bot.event
+async def on_reaction_add(reaction, user):
+    if reaction.message.id not in bot.active_polls or user.bot:
+        return
+
+    poll_data = bot.active_polls[reaction.message.id]
+    author_name = bot.get_user(poll_data["author_id"]).name
+
+    #投票終了の処理
+    if str(reaction.emoji) == "❌":
+        if user.id == poll_data["author_id"]:
+            del bot.active_polls[reaction.message.id]
+            result_embed = create_final_result_embed(poll_data, user)
+            await reaction.message.channel.send(embed=result_embed)
+            await reaction.message.delete()
+            return
+
+    #投票の更新
+    vote_idx = ord(str(reaction.emoji)) - 0x1F1E6
+    if 0 <= vote_idx < len(poll_data["choices"]):
+        if user.id in poll_data["voters"][vote_idx]:
+            remove_vote(poll_data, vote_idx, user)
+        else:
+            remove_previous_vote(poll_data, user)
+            add_new_vote(poll_data, vote_idx, user)
+
+        embed = create_poll_embed(author_name, poll_data["title"], poll_data["description"], poll_data["choices"], poll_data["votes"], poll_data["voters"])
+        await reaction.message.edit(embed=embed)
+
+        await reaction.remove(user)
+
+#投票結果のembed作成
+def create_final_result_embed(poll_data, user):
+    result = "\n".join(f"{choice}: {votes} 票 ({', '.join([f'<@{v}>' for v in voters])})" for choice, votes, voters in zip(poll_data["choices"], poll_data["votes"], poll_data["voters"]))
+    return discord.Embed(title=f"投票結果: {poll_data['title']}", description=f"{poll_data['description']}\n\n{result}", color=0x0ff0000)
+
 
 """
 ********************************************************************************
@@ -794,38 +667,6 @@ async def on_message(message):
         if response:
             await message.channel.send(response)
     await bot.process_commands(message)
-
-
-"""
-********************************************************************************
-没コマンド
-********************************************************************************
-"""
-#statsbotのcalcコマンドフォーマット変換 没
-@bot.tree.command(name='convert-calc', description='Convert to calc command format')
-@app_commands.describe(
-    format="ゲームの形式を選択",
-    team1='Team 1 members (comma-separated)',
-    team2='Team 2 members (comma-separated)',
-    team3='Team 3 members (comma-separated, optional)',
-    team4='Team 4 members (comma-separated, optional)',
-    team5='Team 5 members (comma-separated, optional)',
-    team6='Team 6 members (comma-separated, optional)'
-)
-@app_commands.choices(format=[
-    app_commands.Choice(name='2v2', value='2'),
-    app_commands.Choice(name='3v3', value='3'),
-    app_commands.Choice(name='4v4', value='4'),
-    app_commands.Choice(name='6v6', value='6')
-])
-async def convert_calc(interaction: discord.Interaction, format: str, team1: str, team2: str, team3: str = '', team4: str = '', team5: str = '', team6: str = ''):
-    teams = [team1, team2, team3, team4, team5, team6]
-    teams = [team for team in teams if team]
-
-    player_names = ', '.join([name for team in teams for name in team.split(', ')])
-    command_str = f'^calc {format}, ' + player_names
-    await interaction.response.send_message(command_str)
-
 
 
 """

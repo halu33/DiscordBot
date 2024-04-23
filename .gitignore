@@ -7,6 +7,3 @@ __pycache__/
 .vscode/
 
 db_test.py
-
-prompt_k.txt
-prompt.txt
